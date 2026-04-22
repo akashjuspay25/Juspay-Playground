@@ -296,7 +296,7 @@ export function LandingPage({ onStart, activeTheme }: LandingPageProps) {
               <div className="flex gap-8 animate-marquee">
                 {[...Array(2)].map((_, setIndex) => (
                   <div key={setIndex} className="flex gap-8 shrink-0">
-                    {["React", "Angular", "Vue", "Android", "iOS", "Flutter", "React Native", "Node.js"].map(
+                    {["React", "Android", "iOS", "Flutter", "React Native", "Capacitor", "Cordova"].map(
                       (tech, i) => (
                         <motion.div
                           key={`${setIndex}-${i}`}

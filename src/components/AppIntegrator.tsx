@@ -82,6 +82,8 @@ export function AppIntegrator({ activeTheme }: AppIntegratorProps) {
   const [showPaymentUI, setShowPaymentUI] = useState(false);
   const [selectedPaymentMethod, setSelectedPaymentMethod] = useState<string | null>(null);
   const [isProcessingPayment, setIsProcessingPayment] = useState(false);
+  const [sessionPayload, setSessionPayload] = useState<any>(null);
+  const [orderDetails, setOrderDetails] = useState<{orderId: string, amount: string, customerId: string} | null>(null);
   const logsEndRef = useRef<HTMLDivElement>(null);
 
   const addLog = (type: LogEntry['type'], message: string, details?: string) => {
@@ -89,83 +91,169 @@ export function AppIntegrator({ activeTheme }: AppIntegratorProps) {
     setLogs(prev => [...prev, { timestamp, type, message, details }]);
   };
 
-  // Simulate HyperCheckout Initiate Flow
-  const simulateInitiate = async () => {
-    setSdkStatus("initiating");
-    addLog('info', 'Starting HyperCheckout SDK initiation...');
-    addLog('sdk', 'HyperCheckout.preFetch()', `clientId: "${config.clientId}"`);
-
-    await new Promise(r => setTimeout(r, 800));
-    addLog('success', 'Pre-fetch completed', 'Configuration cached');
-
-    addLog('sdk', 'HyperCheckout.initiate()', JSON.stringify({
-      requestId: `REQ_${Date.now()}`,
-      service: "in.juspay.hyperpay",
-      payload: {
-        action: "initiate",
-        merchantId: config.merchantId,
-        clientId: config.clientId,
-        environment: config.environment
+  // Generate a mock SDK payload similar to actual HyperCheckout session response
+  const generateMockSessionPayload = (merchantId: string, orderId: string, amount: string) => {
+    return {
+      "requestId": `REQ_${Date.now()}`,
+      "service": "in.juspay.hyperpay",
+      "payload": {
+        "action": "paymentPage",
+        "merchantId": merchantId,
+        "clientId": `${merchantId}_android`,
+        "orderId": orderId,
+        "amount": amount,
+        "currency": "INR",
+        "customerId": `cust_${Date.now()}`,
+        "customerPhone": "9876543210",
+        "customerEmail": "customer@example.com",
+        "description": "Test Payment",
+        "returnUrl": "https://merchant.com/payment-response",
+        "environment": config.environment,
+        "sdkPayload": {
+          "requestId": `REQ_${Date.now()}`,
+          "service": "in.juspay.hyperpay",
+          "payload": {
+            "action": "paymentPage",
+            "merchantId": merchantId,
+            "orderId": orderId,
+            "amount": amount,
+            "currency": "INR",
+            "customerId": `cust_${Date.now()}`,
+            "signature": `sig_${Math.random().toString(36).substring(2, 15)}`,
+            "expiry": new Date(Date.now() + 3600000).toISOString()
+          }
+        }
       }
+    };
+  };
+
+  // Simulate Session API Call
+  const simulateSessionApi = async () => {
+    const orderId = `ORD_${Date.now()}`;
+    const amount = "1.00";
+    const customerId = `cust_${Date.now()}`;
+
+    setOrderDetails({ orderId, amount, customerId });
+    addLog('sdk', 'POST /session', JSON.stringify({
+      merchantId: config.merchantId,
+      orderId: orderId,
+      amount: amount,
+      currency: "INR",
+      customerId: customerId,
+      returnUrl: "https://merchant.com/response"
     }, null, 2));
 
     await new Promise(r => setTimeout(r, 1200));
+
+    const payload = generateMockSessionPayload(config.merchantId || "test_merchant", orderId, amount);
+    setSessionPayload(payload);
+
+    addLog('success', 'Session API Response received');
+    addLog('info', 'SDK Payload generated', `Order: ${orderId}, Amount: ₹${amount}`);
+
+    return payload;
+  };
+
+  // Simulate HyperCheckout Initiate Flow
+  const simulateInitiate = async () => {
+    setSdkStatus("initiating");
+    addLog('info', '=== Starting HyperCheckout SDK Flow ===');
+    addLog('info', 'Step 1: Calling Session API...');
+
+    // First call session API
+    const sessionData = await simulateSessionApi();
+
+    addLog('info', 'Step 2: Pre-fetching SDK configuration...');
+    await new Promise(r => setTimeout(r, 600));
+    addLog('success', 'Pre-fetch completed', 'Merchant config cached');
+
+    addLog('info', 'Step 3: Initiating HyperCheckout SDK...');
+    addLog('sdk', 'HyperCheckout.initiate()', JSON.stringify(sessionData, null, 2));
+
+    await new Promise(r => setTimeout(r, 1000));
     addLog('success', 'SDK initiated successfully');
-    addLog('info', 'Payment methods loaded', 'UPI, Cards, Wallets, NetBanking');
+    addLog('info', 'Available payment methods', '• UPI (Google Pay, PhonePe, Paytm)\n• Cards (Visa, Mastercard, RuPay)\n• Wallets (Paytm, Amazon Pay)\n• Net Banking (All major banks)');
     setSdkStatus("ready");
   };
 
-  // Simulate Process (Payment) Flow
-  const simulateProcess = async () => {
+  // Simulate Process (Payment) Flow with actual SDK payload
+  const simulateProcess = async (paymentMethod: string) => {
     setSdkStatus("processing");
     setIsProcessingPayment(true);
     setShowPaymentUI(false);
 
-    const orderId = `ORD_${Date.now()}`;
-    addLog('sdk', 'HyperCheckout.process()', JSON.stringify({
+    const orderId = orderDetails?.orderId || `ORD_${Date.now()}`;
+    const amount = orderDetails?.amount || "1.00";
+
+    addLog('info', `Processing payment via ${paymentMethod.toUpperCase()}...`);
+
+    // Simulate the actual process call with session payload
+    const processPayload = {
       requestId: `REQ_${Date.now()}`,
       service: "in.juspay.hyperpay",
       payload: {
+        ...sessionPayload?.payload,
         action: "paymentPage",
-        merchantId: config.merchantId,
-        clientId: config.clientId,
-        orderId: orderId,
-        amount: "1.00",
-        currency: "INR"
+        paymentMethod: paymentMethod,
+        paymentMethodType: paymentMethod === 'upi' ? 'UPI' : paymentMethod === 'card' ? 'CARD' : paymentMethod === 'wallet' ? 'WALLET' : 'NB'
       }
-    }, null, 2));
+    };
+
+    addLog('sdk', 'HyperCheckout.process()', JSON.stringify(processPayload, null, 2));
+
+    await new Promise(r => setTimeout(r, 2000));
+    addLog('info', 'Payment processing...', 'Connecting to payment gateway');
 
     await new Promise(r => setTimeout(r, 1500));
-    addLog('info', 'Payment initiated', `Order: ${orderId}`);
 
-    await new Promise(r => setTimeout(r, 1000));
+    // Simulate outcome based on environment
+    const successRate = config.environment === "sandbox" ? 0.8 : 0.95;
+    const isSuccess = Math.random() < successRate;
 
-    // Simulate outcome
-    const outcomes: SDKStatus[] = ["success", "success", "cancelled", "error"];
-    const outcome = outcomes[Math.floor(Math.random() * outcomes.length)];
-
-    if (outcome === "success") {
-      addLog('success', 'Payment successful!', 'Transaction charged');
-      addLog('sdk', 'process_result', JSON.stringify({ status: "charged", orderId }, null, 2));
-      toast.success("✅ Payment Successful!");
-    } else if (outcome === "cancelled") {
-      addLog('warning', 'Payment cancelled', 'User cancelled the transaction');
-      addLog('sdk', 'process_result', JSON.stringify({ status: "cancelled", orderId }, null, 2));
-      toast.warning("🚫 Payment Cancelled");
+    if (isSuccess) {
+      const txnId = `TXN_${Date.now()}`;
+      addLog('success', 'Payment successful!', `Transaction ID: ${txnId}`);
+      addLog('sdk', 'process_result', JSON.stringify({
+        status: "charged",
+        orderId: orderId,
+        transactionId: txnId,
+        amount: amount,
+        currency: "INR",
+        paymentMethod: paymentMethod,
+        timestamp: new Date().toISOString()
+      }, null, 2));
+      toast.success(`✅ Payment Successful! TXN: ${txnId.slice(-8)}`);
+      setSdkStatus("success");
     } else {
-      addLog('error', 'Payment failed', 'Authorization failed');
-      addLog('sdk', 'process_result', JSON.stringify({ status: "authorization_failed", orderId }, null, 2));
-      toast.error("❌ Payment Failed");
+      const failureReason = Math.random() > 0.5 ? "Insufficient funds" : "Bank declined transaction";
+      addLog('error', 'Payment failed', failureReason);
+      addLog('sdk', 'process_result', JSON.stringify({
+        status: "authorization_failed",
+        orderId: orderId,
+        errorCode: "PAYMENT_FAILED",
+        errorMessage: failureReason
+      }, null, 2));
+      toast.error("❌ Payment Failed: " + failureReason);
+      setSdkStatus("error");
     }
 
-    setSdkStatus(outcome);
     setIsProcessingPayment(false);
     setSelectedPaymentMethod(null);
 
     // Reset after delay
     setTimeout(() => {
       setSdkStatus("ready");
-    }, 2000);
+    }, 3000);
+  };
+
+  // Handle payment sheet submission
+  const handlePaymentSubmit = async () => {
+    if (!selectedPaymentMethod) {
+      toast.warning("Please select a payment method");
+      return;
+    }
+
+    await simulateProcess(selectedPaymentMethod);
   };
 
   const [copiedSnippet, setCopiedSnippet] = useState<string | null>(null);
@@ -1221,10 +1309,24 @@ For support: developer@juspay.io
                         </button>
                       </div>
 
+                      {/* Order Details */}
+                      {orderDetails && (
+                        <div className="px-3 py-2 bg-zinc-50 dark:bg-zinc-800/50 border-t border-zinc-200 dark:border-zinc-800">
+                          <div className="flex items-center justify-between text-[9px]">
+                            <span className="text-zinc-500">Order ID</span>
+                            <span className="font-mono text-zinc-700 dark:text-zinc-300">{orderDetails.orderId}</span>
+                          </div>
+                          <div className="flex items-center justify-between text-[9px] mt-1">
+                            <span className="text-zinc-500">Amount</span>
+                            <span className="font-bold text-zinc-900 dark:text-white">₹{orderDetails.amount}</span>
+                          </div>
+                        </div>
+                      )}
+
                       {/* Pay Button */}
                       <div className="p-3 border-t border-zinc-200 dark:border-zinc-800">
                         <button
-                          onClick={simulateProcess}
+                          onClick={handlePaymentSubmit}
                           disabled={!selectedPaymentMethod || isProcessingPayment}
                           className={cn(
                             "w-full py-2.5 rounded-lg font-bold text-[11px] text-white",
@@ -1238,7 +1340,7 @@ For support: developer@juspay.io
                               Processing...
                             </>
                           ) : (
-                            <>Pay ₹1.00</>
+                            <>Pay ₹{orderDetails?.amount || "1.00"}</>
                           )}
                         </button>
                       </div>
