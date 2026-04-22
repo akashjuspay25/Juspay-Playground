@@ -1,0 +1,6 @@
+{
+  "name": "Juspay Merchant Playground",
+  "description": "A real-time code playground for Juspay merchants to consult, integrate, and debug their payment flows.",
+  "requestFramePermissions": [],
+  "majorCapabilities": []
+}
