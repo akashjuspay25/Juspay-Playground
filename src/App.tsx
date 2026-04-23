@@ -869,6 +869,8 @@ export default function App() {
             >
               <LandingPage
                 onStart={() => setView("playground")}
+                onAIAssistant={() => setView("playground")}
+                onAppIntegrator={() => setView("app-integrator")}
                 activeTheme={activeTheme}
               />
             </motion.div>

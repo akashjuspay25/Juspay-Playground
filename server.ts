@@ -3,7 +3,6 @@ import { createServer as createViteServer } from "vite";
 import path from "path";
 import { fileURLToPath } from "url";
 import axios from "axios";
-import Anthropic from "@anthropic-ai/sdk";
 import dotenv from "dotenv";
 
 // Load environment variables from .env file
@@ -28,22 +27,19 @@ async function startServer() {
     next();
   });
 
-  // Proxy for Claude AI API
+  // Proxy for Moonshot AI (Kimi) API
   app.post("/api/ai/suggest", async (req, res) => {
     const { requirements, techStack, history } = req.body;
 
-    const apiKey = process.env.ANTHROPIC_API_KEY;
+    const apiKey = process.env.MOONSHOT_API_KEY;
     if (!apiKey) {
-      return res.status(500).json({ error: "ANTHROPIC_API_KEY not configured" });
+      return res.status(500).json({ error: "MOONSHOT_API_KEY not configured" });
     }
-
-    const anthropic = new Anthropic({ apiKey });
 
     const safeReq = (requirements || "").slice(0, 1000);
     const safeStack = (techStack || "").slice(0, 1000);
 
-    const systemPrompt = `
-You are PlayGround AI, a Juspay Integration Expert.
+    const systemPrompt = `You are PlayGround AI, a Juspay Integration Expert.
 
 User Context:
 - Base Requirements: ${safeReq}
@@ -106,11 +102,16 @@ Required JSON structure:
       "description": "string"
     }
   ]
-}
-`;
+}`;
 
     try {
-      const messages: Anthropic.MessageParam[] = [];
+      const messages: Array<{ role: "system" | "user" | "assistant"; content: string }> = [];
+
+      // Add system message first
+      messages.push({
+        role: "system",
+        content: systemPrompt
+      });
 
       if (history && history.length > 0) {
         const recentHistory = history.slice(-5);
@@ -127,19 +128,27 @@ Required JSON structure:
         });
       }
 
-      const result = await anthropic.messages.create({
-        model: "claude-sonnet-4-6",
-        max_tokens: 4096,
-        system: systemPrompt,
-        messages,
+      // Call Moonshot AI (Kimi) API
+      const response = await axios({
+        method: "POST",
+        url: "https://api.moonshot.ai/v1/chat/completions",
+        headers: {
+          "Authorization": `Bearer ${apiKey}`,
+          "Content-Type": "application/json"
+        },
+        data: {
+          model: "kimi-latest",
+          messages: messages,
+          temperature: 0.3,
+          max_tokens: 4096
+        }
       });
 
+      const result = response.data;
       let textResponse = "";
-      if (result.content && result.content.length > 0) {
-        const firstContent = result.content[0];
-        if (firstContent.type === "text") {
-          textResponse = firstContent.text;
-        }
+
+      if (result.choices && result.choices.length > 0 && result.choices[0].message) {
+        textResponse = result.choices[0].message.content;
       }
 
       if (!textResponse) {
@@ -153,12 +162,12 @@ Required JSON structure:
         const parsed = JSON.parse(textResponse);
         res.json(parsed);
       } catch (parseError) {
-        console.error("Failed to parse Claude response as JSON:", textResponse);
+        console.error("Failed to parse AI response as JSON:", textResponse);
         res.status(500).json({ error: "Invalid response format from AI" });
       }
-    } catch (error) {
-      console.error("Claude API Error:", error);
-      res.status(500).json({ error: error instanceof Error ? error.message : "Unknown error" });
+    } catch (error: any) {
+      console.error("Moonshot API Error:", error.response?.data || error.message);
+      res.status(500).json({ error: error.response?.data?.error?.message || error.message });
     }
   });
 
@@ -297,7 +306,7 @@ Required JSON structure:
     });
   }
 
-  app.listen(PORT, "0.0.0.0", () => {
+  app.listen(Number(PORT), "0.0.0.0", () => {
     console.log(`Server running on http://localhost:${PORT}`);
   });
 }

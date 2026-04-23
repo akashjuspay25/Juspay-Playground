@@ -9,6 +9,8 @@ import { useRef } from "react";
 
 interface LandingPageProps {
   onStart: () => void;
+  onAIAssistant?: () => void;
+  onAppIntegrator?: () => void;
   activeTheme: ThemeColors;
 }
 
@@ -83,7 +85,7 @@ function GradientOrbs({ activeTheme }: { activeTheme: ThemeColors }) {
   );
 }
 
-export function LandingPage({ onStart, activeTheme }: LandingPageProps) {
+export function LandingPage({ onStart, onAIAssistant, onAppIntegrator, activeTheme }: LandingPageProps) {
   const containerRef = useRef<HTMLDivElement>(null);
   const { scrollYProgress } = useScroll({
     target: containerRef,
@@ -131,31 +133,47 @@ export function LandingPage({ onStart, activeTheme }: LandingPageProps) {
                 {/* Main bar */}
                 <div className="relative flex items-center gap-6 px-6 py-3 rounded-2xl bg-zinc-900 dark:bg-white border border-zinc-800 dark:border-zinc-200 shadow-2xl">
                   {/* AI Assistant */}
-                  <div className="flex items-center gap-2.5">
+                  <motion.div
+                    className="group flex items-center gap-2.5 cursor-pointer"
+                    onClick={onAIAssistant}
+                    whileHover={{ scale: 1.05 }}
+                    whileTap={{ scale: 0.95 }}
+                    transition={{ type: "spring", stiffness: 400, damping: 15 }}
+                  >
                     <div className="w-2 h-2 rounded-full bg-violet-500" />
                     <div className="flex flex-col">
                       <span className="text-[9px] font-semibold text-zinc-500 dark:text-zinc-400 uppercase tracking-wide">Playground</span>
-                      <span className="text-xs font-bold text-white dark:text-zinc-900">AI Assistant</span>
+                      <span className="text-xs font-bold text-white dark:text-zinc-900 transition-colors duration-200 group-hover:text-violet-400 dark:group-hover:text-violet-500">
+                        AI Assistant
+                      </span>
                     </div>
                     <span className="px-1.5 py-0.5 text-[8px] font-bold bg-gradient-to-r from-violet-500 to-fuchsia-500 text-white rounded">
                       BETA
                     </span>
-                  </div>
+                  </motion.div>
 
                   {/* Divider */}
                   <div className="w-px h-8 bg-zinc-700 dark:bg-zinc-300" />
 
                   {/* App Integrator */}
-                  <div className="flex items-center gap-2.5">
+                  <motion.div
+                    className="group flex items-center gap-2.5 cursor-pointer"
+                    onClick={onAppIntegrator}
+                    whileHover={{ scale: 1.05 }}
+                    whileTap={{ scale: 0.95 }}
+                    transition={{ type: "spring", stiffness: 400, damping: 15 }}
+                  >
                     <div className="w-2 h-2 rounded-full bg-orange-500" />
                     <div className="flex flex-col">
                       <span className="text-[9px] font-semibold text-zinc-500 dark:text-zinc-400 uppercase tracking-wide">Playground</span>
-                      <span className="text-xs font-bold text-white dark:text-zinc-900">Smart App Integrator</span>
+                      <span className="text-xs font-bold text-white dark:text-zinc-900 transition-colors duration-200 group-hover:text-orange-400 dark:group-hover:text-orange-500">
+                        Smart App Integrator
+                      </span>
                     </div>
                     <span className="px-1.5 py-0.5 text-[8px] font-bold bg-gradient-to-r from-orange-500 to-red-500 text-white rounded">
                       BETA
                     </span>
-                  </div>
+                  </motion.div>
                 </div>
               </motion.div>
             </motion.div>
@@ -255,7 +273,7 @@ export function LandingPage({ onStart, activeTheme }: LandingPageProps) {
           </div>
 
           {/* Features Grid */}
-          <div className="grid grid-cols-1 md:grid-cols-3 gap-6 mt-32 max-w-6xl w-full px-4">
+          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6 mt-32 max-w-6xl w-full px-4">
             <FeatureCard
               icon={<ShieldCheck className="w-8 h-8" />}
               title="API Simulation"
@@ -279,6 +297,14 @@ export function LandingPage({ onStart, activeTheme }: LandingPageProps) {
               delay={0.5}
               activeTheme={activeTheme}
               index={2}
+            />
+            <FeatureCard
+              icon={<Layers className="w-8 h-8" />}
+              title="App Integrator"
+              description="Configure and test HyperCheckout SDK integration parameters directly within the playground environment."
+              delay={0.6}
+              activeTheme={activeTheme}
+              index={3}
             />
           </div>
 
@@ -312,6 +338,33 @@ export function LandingPage({ onStart, activeTheme }: LandingPageProps) {
                     )}
                   </div>
                 ))}
+              </div>
+            </div>
+          </motion.div>
+
+          {/* Platform Stats */}
+          <motion.div
+            initial={{ opacity: 0, y: 30 }}
+            whileInView={{ opacity: 1, y: 0 }}
+            viewport={{ once: true }}
+            className="mt-16 w-full max-w-5xl"
+          >
+            <div className="grid grid-cols-2 md:grid-cols-4 gap-6">
+              <div className="text-center p-4 rounded-2xl bg-zinc-50 dark:bg-zinc-900/50 border border-zinc-200 dark:border-zinc-800">
+                <div className="text-xs text-zinc-500 dark:text-zinc-500 uppercase tracking-wider mb-1">PCI-DSS Level 1</div>
+                <div className="text-lg font-bold text-zinc-900 dark:text-white">Secure</div>
+              </div>
+              <div className="text-center p-4 rounded-2xl bg-zinc-50 dark:bg-zinc-900/50 border border-zinc-200 dark:border-zinc-800">
+                <div className="text-xs text-zinc-500 dark:text-zinc-500 uppercase tracking-wider mb-1">Processing Time</div>
+                <div className="text-lg font-bold text-zinc-900 dark:text-white">&lt; 200ms</div>
+              </div>
+              <div className="text-center p-4 rounded-2xl bg-zinc-50 dark:bg-zinc-900/50 border border-zinc-200 dark:border-zinc-800">
+                <div className="text-xs text-zinc-500 dark:text-zinc-500 uppercase tracking-wider mb-1">Daily Scalability</div>
+                <div className="text-lg font-bold text-zinc-900 dark:text-white">100M+</div>
+              </div>
+              <div className="text-center p-4 rounded-2xl bg-zinc-50 dark:bg-zinc-900/50 border border-zinc-200 dark:border-zinc-800">
+                <div className="text-xs text-zinc-500 dark:text-zinc-500 uppercase tracking-wider mb-1">Integration Time</div>
+                <div className="text-lg font-bold text-zinc-900 dark:text-white">2 Days</div>
               </div>
             </div>
           </motion.div>
@@ -376,6 +429,15 @@ export function LandingPage({ onStart, activeTheme }: LandingPageProps) {
           animation-play-state: paused;
         }
       `}</style>
+
+      {/* Copyright Footer */}
+      <footer className="w-full py-8 mt-16 border-t border-zinc-200 dark:border-zinc-800">
+        <div className="text-center">
+          <p className="text-sm text-zinc-500 dark:text-zinc-500">
+            © 2026 Juspay Technologies. All rights reserved.
+          </p>
+        </div>
+      </footer>
     </div>
   );
 }
@@ -446,21 +508,6 @@ function FeatureCard({
         {description}
       </p>
 
-      {/* Learn more link */}
-      <motion.div
-        initial={{ opacity: 0, x: -10 }}
-        whileInView={{ opacity: 1, x: 0 }}
-        viewport={{ once: true }}
-        className="mt-6 flex items-center text-sm font-medium opacity-0 group-hover:opacity-100 transition-opacity"
-      >
-        <span className={activeTheme.text}>Learn more</span>
-        <motion.span
-          animate={{ x: [0, 4, 0] }}
-          transition={{ duration: 1, repeat: Infinity }}
-        >
-          <ChevronRight className="w-4 h-4 ml-1" />
-        </motion.span>
-      </motion.div>
     </motion.div>
   );
 }
