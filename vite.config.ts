@@ -16,14 +16,6 @@ export default defineConfig(({mode}) => {
     build: {
       outDir: 'dist',
       sourcemap: true,
-      rollupOptions: {
-        output: {
-          manualChunks: {
-            vendor: ['react', 'react-dom'],
-            ui: ['@radix-ui/react-dialog', '@radix-ui/react-tabs', '@radix-ui/react-select'],
-          },
-        },
-      },
     },
     server: {
       hmr: process.env.DISABLE_HMR !== 'true',

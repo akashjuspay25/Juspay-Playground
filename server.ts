@@ -16,11 +16,16 @@ async function startServer() {
   const app = express();
   const PORT = 3000;
 
+  // Global JSON parser - before any other middleware
   app.use(express.json());
+  app.use(express.urlencoded({ extended: true }));
 
-  // API routes
-  app.get("/api/health", (req, res) => {
-    res.json({ status: "ok" });
+  // DEBUG: Log all incoming requests to /api
+  app.use('/api/*', (req, res, next) => {
+    console.log(`[DEBUG] ${req.method} ${req.path}`);
+    console.log(`[DEBUG] Content-Type:`, req.headers['content-type']);
+    console.log(`[DEBUG] Has body:`, !!req.body);
+    next();
   });
 
   // Proxy for Claude AI API
@@ -157,10 +162,86 @@ Required JSON structure:
     }
   });
 
+  // Dedicated endpoint for creating Juspay Session (HyperCheckout)
+  app.post("/api/juspay/session", async (req, res) => {
+    console.log("[Session] Received request");
+    console.log("[Session] Content-Type:", req.headers["content-type"]);
+    console.log("[Session] Body:", JSON.stringify(req.body));
+
+    const { merchantId, apiKey, clientId, environment, amount, customerEmail, customerPhone, customerId, firstName, lastName, description, returnUrl } = req.body;
+
+    if (!apiKey || !merchantId) {
+      console.log("[Session] Missing credentials");
+      return res.status(400).json({ error: "API Key and Merchant ID are required" });
+    }
+
+    const baseUrl = environment === "sandbox" ? "https://sandbox.juspay.in" : "https://api.juspay.in";
+    // Generate unique order ID every time
+    const orderId = `ORD_${Date.now()}_${Math.random().toString(36).substring(2, 8)}`;
+
+    console.log(`[Session] Creating order ${orderId} for merchant ${merchantId}`);
+    console.log(`[Session] Forwarding to: ${baseUrl}/session`);
+
+    // Encode API key with trailing colon for Basic auth
+    const encodedAuth = Buffer.from(apiKey.trim() + ":").toString("base64");
+
+    // Build form-encoded request body (Juspay Session API expects form data)
+    const formData = new URLSearchParams();
+    formData.append("order_id", orderId);
+    formData.append("amount", amount || "1.0");
+    formData.append("customer_id", customerId || `cust_${Date.now()}`);
+    formData.append("customer_email", customerEmail || "test@example.com");
+    formData.append("customer_phone", customerPhone || "9876543210");
+    formData.append("payment_page_client_id", clientId || merchantId);
+    formData.append("action", "paymentPage");
+    formData.append("service", "in.juspay.ec");
+    formData.append("return_url", returnUrl || "https://shop.merchant.com");
+    formData.append("description", description || "Complete your payment");
+
+    console.log(`[Session] JUSPAY REQUEST: ${baseUrl}/session`);
+    console.log(`[Session] Headers:`, {
+      "x-merchantid": merchantId,
+      "Content-Type": "application/x-www-form-urlencoded",
+      "Authorization": `Basic ${encodedAuth.substring(0, 30)}...`
+    });
+    console.log(`[Session] Form data:`, formData.toString());
+
+    try {
+      const response = await axios({
+        method: "POST",
+        url: `${baseUrl}/session`,
+        headers: {
+          "x-merchantid": merchantId,
+          "Content-Type": "application/x-www-form-urlencoded",
+          "Authorization": `Basic ${encodedAuth}`,
+        },
+        data: formData.toString(),
+      });
+
+      console.log(`[Session] RESPONSE STATUS: ${response.status}`);
+      console.log(`[Session] ORDER ID FROM JUSPAY:`, response.data.order_id || response.data.id);
+      console.log(`[Session] RESPONSE BODY:`, JSON.stringify(response.data, null, 2));
+
+      res.json({
+        success: true,
+        orderId: orderId,
+        ...response.data,
+      });
+    } catch (error: any) {
+      console.error("[Session] ERROR STATUS:", error.response?.status);
+      console.error("[Session] ERROR BODY:", error.response?.data);
+      res.status(error.response?.status || 500).json({
+        success: false,
+        error: error.response?.data?.error_message || error.message,
+        details: error.response?.data,
+      });
+    }
+  });
+
   // Proxy for Juspay API
   app.post("/api/juspay/proxy", async (req, res) => {
     const { method, endpoint, body, apiKey, environment } = req.body;
-    
+
     if (!apiKey) {
       return res.status(400).json({ error: "API Key is required" });
     }
@@ -199,6 +280,14 @@ Required JSON structure:
       server: { middlewareMode: true },
       appType: "spa",
     });
+
+    // IMPORTANT: Mount API routes BEFORE Vite middleware
+    // to ensure they are handled by Express, not Vite
+    app.use('/api', (req, res, next) => {
+      // Skip Vite for /api routes
+      next('route');
+    });
+
     app.use(vite.middlewares);
   } else {
     const distPath = path.join(process.cwd(), "dist");

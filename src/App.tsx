@@ -400,33 +400,143 @@ export default function App() {
           <div className="relative">
             <motion.button
               onClick={() => setMenuOpen(!menuOpen)}
-              className="hidden sm:flex items-center justify-center w-10 h-10 rounded-full text-zinc-500 dark:text-zinc-400 hover:text-zinc-900 dark:hover:text-white hover:bg-zinc-100 dark:hover:bg-zinc-800 transition-colors"
-              whileHover={{ scale: 1.05 }}
-              whileTap={{ scale: 0.95 }}
+              className="hidden sm:flex items-center justify-center w-11 h-11 rounded-full hover:bg-zinc-100 dark:hover:bg-zinc-800 transition-colors"
+              whileHover={{ scale: 1.08 }}
+              whileTap={{ scale: 0.92 }}
+              animate={view === "landing" && !menuOpen ? {
+                y: [0, -6, 0, -4, 0],
+              } : {}}
+              transition={{
+                duration: 1.8,
+                repeat: Infinity,
+                repeatDelay: 3,
+                ease: "easeInOut",
+              }}
+              aria-label={menuOpen ? "Close menu" : "Open menu"}
             >
-              <AnimatePresence mode="wait">
-                {menuOpen ? (
+              {/* Animated Hamburger Icon */}
+              <div className="relative w-5 h-5 flex flex-col items-center justify-center">
+                {/* Glow effect during highlight */}
+                {view === "landing" && !menuOpen && (
                   <motion.div
-                    key="close"
-                    initial={{ rotate: -90, opacity: 0 }}
-                    animate={{ rotate: 0, opacity: 1 }}
-                    exit={{ rotate: 90, opacity: 0 }}
-                    transition={{ duration: 0.2 }}
-                  >
-                    <X className="w-5 h-5" />
-                  </motion.div>
-                ) : (
-                  <motion.div
-                    key="menu"
-                    initial={{ rotate: 90, opacity: 0 }}
-                    animate={{ rotate: 0, opacity: 1 }}
-                    exit={{ rotate: -90, opacity: 0 }}
-                    transition={{ duration: 0.2 }}
-                  >
-                    <Menu className="w-5 h-5" />
-                  </motion.div>
+                    className="absolute inset-0 rounded-full"
+                    style={{
+                      background: "radial-gradient(circle, rgba(245,158,11,0.4) 0%, transparent 70%)",
+                      filter: "blur(8px)",
+                    }}
+                    animate={{
+                      opacity: [0, 0.8, 0],
+                      scale: [0.5, 1.5, 0.5],
+                    }}
+                    transition={{
+                      duration: 1.8,
+                      repeat: Infinity,
+                      repeatDelay: 3,
+                      ease: "easeInOut",
+                      times: [0, 0.5, 1],
+                    }}
+                  />
                 )}
-              </AnimatePresence>
+                {/* Top line */}
+                <motion.span
+                  className="absolute w-5 h-0.5 rounded-full"
+                  animate={view === "landing" && !menuOpen ? {
+                    rotate: 0,
+                    y: -4,
+                    backgroundColor: ["#71717a", "#fbbf24", "#f59e0b", "#fbbf24", "#71717a"],
+                    boxShadow: [
+                      "0 0 0px rgba(245,158,11,0)",
+                      "0 0 8px rgba(245,158,11,0.6)",
+                      "0 0 12px rgba(245,158,11,0.8)",
+                      "0 0 8px rgba(245,158,11,0.6)",
+                      "0 0 0px rgba(245,158,11,0)",
+                    ],
+                  } : {
+                    rotate: menuOpen ? 45 : 0,
+                    y: menuOpen ? 0 : -4,
+                    backgroundColor: isDarkMode ? "#ffffff" : "#18181b",
+                    boxShadow: "0 0 0px rgba(245,158,11,0)",
+                  }}
+                  initial={{ backgroundColor: "#71717a" }}
+                  transition={{
+                    duration: view === "landing" && !menuOpen ? 1.8 : 0.25,
+                    repeat: view === "landing" && !menuOpen ? Infinity : 0,
+                    repeatDelay: view === "landing" && !menuOpen ? 3 : 0,
+                    ease: view === "landing" && !menuOpen ? "easeInOut" : [0.25, 0.46, 0.45, 0.94],
+                    times: view === "landing" && !menuOpen ? [0, 0.25, 0.5, 0.75, 1] : undefined,
+                  }}
+                />
+                {/* Middle line */}
+                <motion.span
+                  className="absolute w-5 h-0.5 rounded-full"
+                  animate={view === "landing" && !menuOpen ? {
+                    opacity: 1,
+                    scaleX: [1, 1.3, 1.5, 1.3, 1],
+                    backgroundColor: ["#71717a", "#fbbf24", "#f59e0b", "#fbbf24", "#71717a"],
+                    boxShadow: [
+                      "0 0 0px rgba(245,158,11,0)",
+                      "0 0 8px rgba(245,158,11,0.6)",
+                      "0 0 12px rgba(245,158,11,0.8)",
+                      "0 0 8px rgba(245,158,11,0.6)",
+                      "0 0 0px rgba(245,158,11,0)",
+                    ],
+                  } : {
+                    opacity: menuOpen ? 0 : 1,
+                    scaleX: menuOpen ? 0 : 1,
+                    backgroundColor: isDarkMode ? "#ffffff" : "#18181b",
+                    boxShadow: "0 0 0px rgba(245,158,11,0)",
+                  }}
+                  initial={{ backgroundColor: "#71717a" }}
+                  transition={{
+                    duration: view === "landing" && !menuOpen ? 1.8 : 0.2,
+                    repeat: view === "landing" && !menuOpen ? Infinity : 0,
+                    repeatDelay: view === "landing" && !menuOpen ? 3 : 0,
+                    ease: "easeInOut",
+                    times: view === "landing" && !menuOpen ? [0, 0.25, 0.5, 0.75, 1] : undefined,
+                  }}
+                />
+                {/* Bottom line */}
+                <motion.span
+                  className="absolute w-5 h-0.5 rounded-full"
+                  animate={view === "landing" && !menuOpen ? {
+                    rotate: 0,
+                    y: 4,
+                    backgroundColor: ["#71717a", "#fbbf24", "#f59e0b", "#fbbf24", "#71717a"],
+                    boxShadow: [
+                      "0 0 0px rgba(245,158,11,0)",
+                      "0 0 8px rgba(245,158,11,0.6)",
+                      "0 0 12px rgba(245,158,11,0.8)",
+                      "0 0 8px rgba(245,158,11,0.6)",
+                      "0 0 0px rgba(245,158,11,0)",
+                    ],
+                  } : {
+                    rotate: menuOpen ? -45 : 0,
+                    y: menuOpen ? 0 : 4,
+                    backgroundColor: isDarkMode ? "#ffffff" : "#18181b",
+                    boxShadow: "0 0 0px rgba(245,158,11,0)",
+                  }}
+                  initial={{ backgroundColor: "#71717a" }}
+                  transition={{
+                    duration: view === "landing" && !menuOpen ? 1.8 : 0.25,
+                    repeat: view === "landing" && !menuOpen ? Infinity : 0,
+                    repeatDelay: view === "landing" && !menuOpen ? 3 : 0,
+                    ease: view === "landing" && !menuOpen ? "easeInOut" : [0.25, 0.46, 0.45, 0.94],
+                    times: view === "landing" && !menuOpen ? [0, 0.25, 0.5, 0.75, 1] : undefined,
+                  }}
+                />
+                {/* Ripple effect on click */}
+                <AnimatePresence>
+                  {menuOpen && (
+                    <motion.span
+                      className={cn("absolute inset-0 rounded-full", activeTheme.bg)}
+                      initial={{ scale: 0, opacity: 0.8 }}
+                      animate={{ scale: 2.5, opacity: 0 }}
+                      exit={{ opacity: 0 }}
+                      transition={{ duration: 0.4 }}
+                    />
+                  )}
+                </AnimatePresence>
+              </div>
             </motion.button>
 
             {/* Dropdown Menu */}

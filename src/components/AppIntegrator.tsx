@@ -1,4 +1,4 @@
-import { useState, useRef } from "react";
+import { useState, useRef, useEffect } from "react";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Badge } from "@/components/ui/badge";
@@ -8,11 +8,13 @@ import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog";
-import { Copy, Check, Smartphone, Apple, Code2, Terminal, FileCode, Settings, AlertCircle, Info, ExternalLink, ChevronRight, Upload, Play, Eye, Key, Building2, ShieldCheck, RefreshCw, Download, Zap } from "lucide-react";
+import { Copy, Check, Smartphone, Apple, Code2, Terminal, FileCode, Settings, AlertCircle, Info, ExternalLink, ChevronRight, ChevronUp, ChevronDown, Upload, Play, Eye, Key, Building2, ShieldCheck, RefreshCw, Download, Zap, X } from "lucide-react";
 import { toast } from "sonner";
 import { motion, AnimatePresence } from "motion/react";
 import { cn } from "@/lib/utils";
 import type { ThemeColors } from "@/src/App";
+import { AndroidPhonePreview } from "./AndroidPhonePreview";
+import { HyperServices } from "./HyperCheckoutSDK";
 
 interface AppIntegratorProps {
   activeTheme: ThemeColors;
@@ -84,6 +86,9 @@ export function AppIntegrator({ activeTheme }: AppIntegratorProps) {
   const [isProcessingPayment, setIsProcessingPayment] = useState(false);
   const [sessionPayload, setSessionPayload] = useState<any>(null);
   const [orderDetails, setOrderDetails] = useState<{orderId: string, amount: string, customerId: string} | null>(null);
+  const [merchantOrderId, setMerchantOrderId] = useState<string>("");
+  const [merchantSdkPayload, setMerchantSdkPayload] = useState<string>("");
+  const [sdkControlsMinimized, setSdkControlsMinimized] = useState<boolean>(false);
   const logsEndRef = useRef<HTMLDivElement>(null);
 
   const addLog = (type: LogEntry['type'], message: string, details?: string) => {
@@ -127,105 +132,236 @@ export function AppIntegrator({ activeTheme }: AppIntegratorProps) {
     };
   };
 
-  // Simulate Session API Call
-  const simulateSessionApi = async () => {
-    const orderId = `ORD_${Date.now()}`;
+  // State for real payment page URL
+  const [paymentPageUrl, setPaymentPageUrl] = useState<string | null>(null);
+  const [showRealPaymentPage, setShowRealPaymentPage] = useState(false);
+  const [previewMode, setPreviewMode] = useState<'simulated' | 'real'>('simulated');
+
+  // Use merchant-provided SDK payload for HyperCheckout flow
+  const useMerchantSdkPayload = async (): Promise<any> => {
+    if (!merchantOrderId || !merchantSdkPayload) {
+      addLog('error', 'Missing Order ID or SDK Payload', 'Please paste both values from your Session API response');
+      toast.error("Please provide Order ID and SDK Payload");
+      throw new Error("Order ID and SDK Payload are required");
+    }
+
     const amount = "1.00";
     const customerId = `cust_${Date.now()}`;
 
-    setOrderDetails({ orderId, amount, customerId });
-    addLog('sdk', 'POST /session', JSON.stringify({
+    setOrderDetails({ orderId: merchantOrderId, amount, customerId });
+    addLog('info', 'Using merchant-provided SDK payload');
+    addLog('sdk', 'Order Details', JSON.stringify({
       merchantId: config.merchantId,
-      orderId: orderId,
+      clientId: config.clientId,
+      orderId: merchantOrderId,
       amount: amount,
-      currency: "INR",
-      customerId: customerId,
-      returnUrl: "https://merchant.com/response"
+      customerId: customerId
     }, null, 2));
 
-    await new Promise(r => setTimeout(r, 1200));
+    // Parse merchant SDK payload
+    let parsedPayload;
+    try {
+      parsedPayload = JSON.parse(merchantSdkPayload);
+    } catch (e) {
+      addLog('error', 'Invalid SDK Payload JSON', 'Please check your SDK payload format');
+      toast.error("Invalid SDK Payload JSON");
+      throw new Error("Invalid SDK Payload");
+    }
 
-    const payload = generateMockSessionPayload(config.merchantId || "test_merchant", orderId, amount);
-    setSessionPayload(payload);
+    // Build SDK payload using merchant's data
+    const sdkPayload = {
+      requestId: `REQ_${Date.now()}`,
+      service: "in.juspay.hyperpay",
+      payload: parsedPayload,
+    };
 
-    addLog('success', 'Session API Response received');
-    addLog('info', 'SDK Payload generated', `Order: ${orderId}, Amount: ₹${amount}`);
+    addLog('info', 'SDK payload ready for process() call');
+    addLog('sdk', 'process() payload', JSON.stringify(sdkPayload, null, 2));
 
-    return payload;
+    setSessionPayload(sdkPayload);
+    return sdkPayload;
   };
 
-  // Simulate HyperCheckout Initiate Flow
+  // Build HyperCheckout Initiate Payload
+  const buildInitiatePayload = () => {
+    return {
+      requestId: `REQ_${Date.now()}`,
+      service: "in.juspay.hyperpay",
+      payload: {
+        action: "initiate",
+        merchantId: config.merchantId,
+        clientId: config.clientId,
+        environment: config.environment
+      }
+    };
+  };
+
+  // Build HyperCheckout Process Payload
+  // Reference: https://juspay.io/in/docs/hyper-checkout/android/base-sdk-integration/open-hypercheckout-screen
+  const buildProcessPayload = () => {
+    // Parse merchant SDK payload (from Session API response)
+    let sdkPayload = null;
+    try {
+      const parsed = JSON.parse(merchantSdkPayload);
+      // Session API returns sdk_payload field containing the actual SDK payload
+      sdkPayload = parsed.sdk_payload || parsed;
+    } catch (e) {
+      addLog('warning', 'Could not parse merchant SDK payload, using defaults');
+    }
+
+    // If we have the SDK payload from Session API, use it directly
+    // HyperCheckout.process() expects the sdk_payload as-is from Session API
+    if (sdkPayload) {
+      return {
+        requestId: sdkPayload.requestId || `REQ_${Date.now()}`,
+        service: sdkPayload.service || "in.juspay.hyperpay",
+        payload: {
+          ...sdkPayload.payload,
+          // Ensure action is paymentPage for opening checkout
+          action: "paymentPage"
+        }
+      };
+    }
+
+    // Fallback: Build minimal payload if no SDK payload provided
+    return {
+      requestId: `REQ_${Date.now()}`,
+      service: "in.juspay.hyperpay",
+      payload: {
+        action: "paymentPage",
+        merchantId: config.merchantId,
+        clientId: config.clientId,
+        orderId: merchantOrderId,
+        amount: "1.0",
+        currency: "INR",
+        customerId: `cust_${Date.now()}`,
+        customerEmail: "test@example.com",
+        customerPhone: "9876543210"
+      }
+    };
+  };
+
+  // HyperCheckout Initiate Flow
   const simulateInitiate = async () => {
     setSdkStatus("initiating");
     addLog('info', '=== Starting HyperCheckout SDK Flow ===');
-    addLog('info', 'Step 1: Calling Session API...');
+    addLog('info', 'Step 1: Validating merchant order details...');
 
-    // First call session API
-    const sessionData = await simulateSessionApi();
+    if (!merchantOrderId) {
+      addLog('error', 'Order ID is required', 'Please paste order_id from Session API response');
+      toast.error("Please provide Order ID");
+      setSdkStatus("idle");
+      return;
+    }
+
+    setOrderDetails({
+      orderId: merchantOrderId,
+      amount: "1.0",
+      customerId: `cust_${Date.now()}`
+    });
 
     addLog('info', 'Step 2: Pre-fetching SDK configuration...');
     await new Promise(r => setTimeout(r, 600));
     addLog('success', 'Pre-fetch completed', 'Merchant config cached');
 
     addLog('info', 'Step 3: Initiating HyperCheckout SDK...');
-    addLog('sdk', 'HyperCheckout.initiate()', JSON.stringify(sessionData, null, 2));
+    const initiatePayload = buildInitiatePayload();
+    addLog('sdk', 'HyperCheckout.initiate()', JSON.stringify(initiatePayload, null, 2));
 
-    await new Promise(r => setTimeout(r, 1000));
+    await new Promise(r => setTimeout(r, 800));
     addLog('success', 'SDK initiated successfully');
-    addLog('info', 'Available payment methods', '• UPI (Google Pay, PhonePe, Paytm)\n• Cards (Visa, Mastercard, RuPay)\n• Wallets (Paytm, Amazon Pay)\n• Net Banking (All major banks)');
+    addLog('info', 'SDK Status: Ready for payment');
+
+    // Extract payment page URL from merchant SDK payload if available
+    let webUrl = null;
+    try {
+      const parsedPayload = JSON.parse(merchantSdkPayload);
+      addLog('sdk', 'Parsed SDK payload structure', JSON.stringify(Object.keys(parsedPayload), null, 2));
+
+      // Check multiple possible locations for payment URL
+      webUrl = parsedPayload.payment_links?.web ||
+               parsedPayload.paymentLink ||
+               parsedPayload.url ||
+               parsedPayload.sdk_payload?.payment_links?.web ||
+               parsedPayload.payload?.payment_links?.web;
+
+      if (webUrl) {
+        addLog('success', 'Payment page URL found', webUrl);
+        setPaymentPageUrl(webUrl);
+      } else {
+        addLog('warning', 'No payment page URL found in SDK payload');
+        addLog('info', 'Available fields in payload', JSON.stringify(Object.keys(parsedPayload), null, 2));
+        setPaymentPageUrl(null);
+      }
+    } catch (e: any) {
+      addLog('error', 'Failed to parse SDK payload', e.message);
+      setPaymentPageUrl(null);
+    }
+
+    // Show payment UI
+    setShowPaymentUI(true);
     setSdkStatus("ready");
   };
 
-  // Simulate Process (Payment) Flow with actual SDK payload
-  const simulateProcess = async (paymentMethod: string) => {
+  // Handle payment submission - proper SDK flow with HyperCheckout.process()
+  const handlePaymentSubmit = async () => {
+    if (!selectedPaymentMethod) {
+      toast.warning("Please select a payment method");
+      return;
+    }
+
     setSdkStatus("processing");
     setIsProcessingPayment(true);
-    setShowPaymentUI(false);
 
-    const orderId = orderDetails?.orderId || `ORD_${Date.now()}`;
+    // Get order details
+    const orderId = orderDetails?.orderId || merchantOrderId;
     const amount = orderDetails?.amount || "1.00";
 
-    addLog('info', `Processing payment via ${paymentMethod.toUpperCase()}...`);
+    // Build process payload from merchant inputs
+    const processPayload = buildProcessPayload();
 
-    // Simulate the actual process call with session payload
-    const processPayload = {
-      requestId: `REQ_${Date.now()}`,
-      service: "in.juspay.hyperpay",
-      payload: {
-        ...sessionPayload?.payload,
-        action: "paymentPage",
-        paymentMethod: paymentMethod,
-        paymentMethodType: paymentMethod === 'upi' ? 'UPI' : paymentMethod === 'card' ? 'CARD' : paymentMethod === 'wallet' ? 'WALLET' : 'NB'
-      }
-    };
+    // Add payment method details
+    processPayload.payload.paymentMethod = selectedPaymentMethod;
+    processPayload.payload.paymentMethodType = selectedPaymentMethod === 'upi' ? 'UPI' :
+                                              selectedPaymentMethod === 'card' ? 'CARD' :
+                                              selectedPaymentMethod === 'wallet' || selectedPaymentMethod === 'amazonpay' ? 'WALLET' : 'NB';
 
+    addLog('info', 'Calling HyperCheckout.process() with SDK payload...');
     addLog('sdk', 'HyperCheckout.process()', JSON.stringify(processPayload, null, 2));
 
-    await new Promise(r => setTimeout(r, 2000));
-    addLog('info', 'Payment processing...', 'Connecting to payment gateway');
-
+    // Simulate SDK processing delay (in real app, SDK handles this)
     await new Promise(r => setTimeout(r, 1500));
+    addLog('info', 'HyperCheckout SDK rendering payment UI...');
 
-    // Simulate outcome based on environment
-    const successRate = config.environment === "sandbox" ? 0.8 : 0.95;
+    // For demo/simulation - show processing state then result
+    await new Promise(r => setTimeout(r, 2000));
+
+    // Simulate outcome
+    const successRate = config.environment === "sandbox" ? 0.7 : 0.95;
     const isSuccess = Math.random() < successRate;
 
     if (isSuccess) {
       const txnId = `TXN_${Date.now()}`;
-      addLog('success', 'Payment successful!', `Transaction ID: ${txnId}`);
+      addLog('success', 'Payment successful via SDK');
       addLog('sdk', 'process_result', JSON.stringify({
         status: "charged",
         orderId: orderId,
         transactionId: txnId,
         amount: amount,
         currency: "INR",
-        paymentMethod: paymentMethod,
+        paymentMethod: selectedPaymentMethod,
         timestamp: new Date().toISOString()
       }, null, 2));
       toast.success(`✅ Payment Successful! TXN: ${txnId.slice(-8)}`);
       setSdkStatus("success");
     } else {
-      const failureReason = Math.random() > 0.5 ? "Insufficient funds" : "Bank declined transaction";
+      const failureReasons = [
+        "Insufficient funds",
+        "Bank declined transaction",
+        "Card authentication failed",
+        "Transaction timeout"
+      ];
+      const failureReason = failureReasons[Math.floor(Math.random() * failureReasons.length)];
       addLog('error', 'Payment failed', failureReason);
       addLog('sdk', 'process_result', JSON.stringify({
         status: "authorization_failed",
@@ -240,20 +376,10 @@ export function AppIntegrator({ activeTheme }: AppIntegratorProps) {
     setIsProcessingPayment(false);
     setSelectedPaymentMethod(null);
 
-    // Reset after delay
+    // Auto-reset
     setTimeout(() => {
       setSdkStatus("ready");
     }, 3000);
-  };
-
-  // Handle payment sheet submission
-  const handlePaymentSubmit = async () => {
-    if (!selectedPaymentMethod) {
-      toast.warning("Please select a payment method");
-      return;
-    }
-
-    await simulateProcess(selectedPaymentMethod);
   };
 
   const [copiedSnippet, setCopiedSnippet] = useState<string | null>(null);
@@ -440,6 +566,18 @@ dependencies {`
         jvmTarget = '1.8'
     }`
       );
+    }
+
+    // Add hyperSdkPlugin block if not present
+    if (!gradle.includes("hyperSdkPlugin")) {
+      const clientIdValue = config.clientId || config.merchantId || "";
+      gradle += `
+
+// Juspay HyperCheckout Plugin Configuration
+hyperSdkPlugin {
+    clientId = "${clientIdValue}"
+    sdkVersion = "2.2.5"
+}`;
     }
 
     return gradle;
@@ -865,18 +1003,6 @@ For support: developer@juspay.io
             </div>
           </div>
 
-          <div className="space-y-2">
-            <Label htmlFor="apiKey">API Key</Label>
-            <Input
-              id="apiKey"
-              type="password"
-              placeholder="Enter your Juspay API Key"
-              value={config.apiKey}
-              onChange={(e) => setConfig({ ...config, apiKey: e.target.value })}
-              className={cn("focus-visible:ring-offset-0", activeTheme.ring)}
-            />
-          </div>
-
           <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
             <div className="space-y-2">
               <Label>Environment</Label>
@@ -913,7 +1039,7 @@ For support: developer@juspay.io
       >
         <Button
           onClick={() => setIntegrationStep("codebase")}
-          disabled={!config.merchantId || !config.apiKey}
+          disabled={!config.merchantId || !config.clientId}
           className={cn("w-full h-14 text-lg", activeTheme.primary)}
         >
           <Zap className="w-5 h-5 mr-2" />
@@ -1166,312 +1292,157 @@ For support: developer@juspay.io
   );
 
   const renderLivePreview = () => (
-    <Dialog open={showPreview} onOpenChange={setShowPreview}>
-      <DialogContent className="w-auto min-w-[900px] max-w-[95vw] h-[90vh] max-h-[800px] overflow-hidden p-0 flex flex-col">
+    <Dialog
+      open={showPreview}
+      onOpenChange={(open) => {
+        setShowPreview(open);
+        if (open && sdkStatus === "idle") {
+          // Auto-start SDK when preview opens
+          setTimeout(() => simulateInitiate(), 500);
+        }
+      }}
+    >
+      <DialogContent className="w-auto min-w-[1000px] max-w-[95vw] h-[90vh] max-h-[850px] overflow-hidden p-0 flex flex-col">
         {/* Header */}
-        <div className="flex-none px-6 py-4 border-b border-zinc-200 dark:border-zinc-800">
+        <div className="flex-none px-6 py-4 border-b border-zinc-200 dark:border-zinc-800 bg-white dark:bg-zinc-950">
           <DialogHeader>
             <DialogTitle className="flex items-center gap-2 text-lg">
               <Smartphone className={cn("w-5 h-5", activeTheme.text)} />
               Live Integration Preview
             </DialogTitle>
             <DialogDescription className="text-sm">
-              Simulated Android app with real-time SDK logs
+              Simulating real app flow: Products → Cart → Checkout → HyperCheckout SDK • Merchant: {config.merchantId || "Not set"} • Client: {config.clientId || "Not set"}
             </DialogDescription>
           </DialogHeader>
         </div>
 
-        {/* Main Content - Flex Row Layout */}
-        <div className="flex-1 flex flex-row min-h-0">
-          {/* Phone Mockup - Left Side */}
-          <div className="w-[55%] flex items-center justify-center bg-zinc-50 dark:bg-zinc-900/50 p-4 overflow-auto">
-            <div
-              className="relative bg-zinc-900 rounded-[1.5rem] border-[8px] border-zinc-800 shadow-2xl"
-              style={{
-                width: '240px',
-                height: '480px',
-                flexShrink: 0,
-              }}
-            >
-              {/* Phone buttons */}
-              <div className="absolute -right-[8px] top-20 w-[3px] h-8 bg-zinc-700 rounded-r" />
-              <div className="absolute -right-[8px] top-28 w-[3px] h-10 bg-zinc-700 rounded-r" />
-              <div className="absolute -left-[8px] top-24 w-[3px] h-5 bg-zinc-700 rounded-l" />
-
-              {/* Phone notch */}
-              <div className="absolute top-0 left-1/2 -translate-x-1/2 w-20 h-4 bg-zinc-800 rounded-b-lg z-20 flex items-center justify-center">
-                <div className="w-8 h-0.5 bg-zinc-700 rounded-full" />
-              </div>
-
-              {/* Screen content */}
-              <div className="w-full h-full bg-white dark:bg-zinc-950 rounded-[1rem] pt-4 px-2 pb-2 flex flex-col overflow-hidden relative">
-                {/* Payment Sheet Overlay */}
-                <AnimatePresence>
-                  {showPaymentUI && (
-                    <motion.div
-                      initial={{ y: "100%" }}
-                      animate={{ y: 0 }}
-                      exit={{ y: "100%" }}
-                      transition={{ type: "spring", damping: 25, stiffness: 200 }}
-                      className="absolute inset-0 z-50 bg-white dark:bg-zinc-900 rounded-[1rem] flex flex-col"
-                    >
-                      {/* Sheet Header */}
-                      <div className="flex items-center justify-between p-3 border-b border-zinc-200 dark:border-zinc-800">
-                        <div>
-                          <p className="text-[11px] font-bold text-zinc-900 dark:text-white">Pay ₹1.00</p>
-                          <p className="text-[9px] text-zinc-500">{config.merchantId || "Merchant"}</p>
-                        </div>
-                        <button
-                          onClick={() => {
-                            setShowPaymentUI(false);
-                            addLog('warning', 'User dismissed payment sheet');
-                          }}
-                          className="w-6 h-6 rounded-full bg-zinc-100 dark:bg-zinc-800 flex items-center justify-center"
-                        >
-                          <span className="text-zinc-500">✕</span>
-                        </button>
-                      </div>
-
-                      {/* Payment Methods */}
-                      <div className="flex-1 overflow-y-auto p-2">
-                        <p className="text-[9px] font-semibold text-zinc-500 uppercase mb-2 px-1">Select Payment Method</p>
-
-                        {/* UPI */}
-                        <button
-                          onClick={() => setSelectedPaymentMethod('upi')}
-                          className={cn(
-                            "w-full flex items-center gap-2 p-2.5 rounded-lg mb-2 border",
-                            selectedPaymentMethod === 'upi'
-                              ? "border-violet-500 bg-violet-50 dark:bg-violet-950/20"
-                              : "border-zinc-200 dark:border-zinc-700"
-                          )}
-                        >
-                          <div className="w-8 h-8 rounded bg-green-100 flex items-center justify-center text-[10px] font-bold text-green-600">UPI</div>
-                          <div className="flex-1 text-left">
-                            <p className="text-[10px] font-semibold text-zinc-900 dark:text-white">UPI</p>
-                            <p className="text-[8px] text-zinc-500">Google Pay, PhonePe, Paytm</p>
-                          </div>
-                          {selectedPaymentMethod === 'upi' && <div className="w-4 h-4 rounded-full bg-violet-500" />}
-                        </button>
-
-                        {/* Cards */}
-                        <button
-                          onClick={() => setSelectedPaymentMethod('card')}
-                          className={cn(
-                            "w-full flex items-center gap-2 p-2.5 rounded-lg mb-2 border",
-                            selectedPaymentMethod === 'card'
-                              ? "border-violet-500 bg-violet-50 dark:bg-violet-950/20"
-                              : "border-zinc-200 dark:border-zinc-700"
-                          )}
-                        >
-                          <div className="w-8 h-8 rounded bg-blue-100 flex items-center justify-center text-[10px]">💳</div>
-                          <div className="flex-1 text-left">
-                            <p className="text-[10px] font-semibold text-zinc-900 dark:text-white">Card</p>
-                            <p className="text-[8px] text-zinc-500">Credit / Debit Card</p>
-                          </div>
-                          {selectedPaymentMethod === 'card' && <div className="w-4 h-4 rounded-full bg-violet-500" />}
-                        </button>
-
-                        {/* Wallet */}
-                        <button
-                          onClick={() => setSelectedPaymentMethod('wallet')}
-                          className={cn(
-                            "w-full flex items-center gap-2 p-2.5 rounded-lg mb-2 border",
-                            selectedPaymentMethod === 'wallet'
-                              ? "border-violet-500 bg-violet-50 dark:bg-violet-950/20"
-                              : "border-zinc-200 dark:border-zinc-700"
-                          )}
-                        >
-                          <div className="w-8 h-8 rounded bg-purple-100 flex items-center justify-center text-[10px]">👛</div>
-                          <div className="flex-1 text-left">
-                            <p className="text-[10px] font-semibold text-zinc-900 dark:text-white">Wallet</p>
-                            <p className="text-[8px] text-zinc-500">Paytm, Amazon Pay, Mobikwik</p>
-                          </div>
-                          {selectedPaymentMethod === 'wallet' && <div className="w-4 h-4 rounded-full bg-violet-500" />}
-                        </button>
-
-                        {/* NetBanking */}
-                        <button
-                          onClick={() => setSelectedPaymentMethod('netbanking')}
-                          className={cn(
-                            "w-full flex items-center gap-2 p-2.5 rounded-lg border",
-                            selectedPaymentMethod === 'netbanking'
-                              ? "border-violet-500 bg-violet-50 dark:bg-violet-950/20"
-                              : "border-zinc-200 dark:border-zinc-700"
-                          )}
-                        >
-                          <div className="w-8 h-8 rounded bg-amber-100 flex items-center justify-center text-[10px]">🏦</div>
-                          <div className="flex-1 text-left">
-                            <p className="text-[10px] font-semibold text-zinc-900 dark:text-white">Net Banking</p>
-                            <p className="text-[8px] text-zinc-500">All major banks</p>
-                          </div>
-                          {selectedPaymentMethod === 'netbanking' && <div className="w-4 h-4 rounded-full bg-violet-500" />}
-                        </button>
-                      </div>
-
-                      {/* Order Details */}
-                      {orderDetails && (
-                        <div className="px-3 py-2 bg-zinc-50 dark:bg-zinc-800/50 border-t border-zinc-200 dark:border-zinc-800">
-                          <div className="flex items-center justify-between text-[9px]">
-                            <span className="text-zinc-500">Order ID</span>
-                            <span className="font-mono text-zinc-700 dark:text-zinc-300">{orderDetails.orderId}</span>
-                          </div>
-                          <div className="flex items-center justify-between text-[9px] mt-1">
-                            <span className="text-zinc-500">Amount</span>
-                            <span className="font-bold text-zinc-900 dark:text-white">₹{orderDetails.amount}</span>
-                          </div>
-                        </div>
-                      )}
-
-                      {/* Pay Button */}
-                      <div className="p-3 border-t border-zinc-200 dark:border-zinc-800">
-                        <button
-                          onClick={handlePaymentSubmit}
-                          disabled={!selectedPaymentMethod || isProcessingPayment}
-                          className={cn(
-                            "w-full py-2.5 rounded-lg font-bold text-[11px] text-white",
-                            selectedPaymentMethod ? activeTheme.primary : "bg-zinc-300",
-                            "flex items-center justify-center gap-1"
-                          )}
-                        >
-                          {isProcessingPayment ? (
-                            <>
-                              <RefreshCw className="w-3.5 h-3.5 animate-spin" />
-                              Processing...
-                            </>
-                          ) : (
-                            <>Pay ₹{orderDetails?.amount || "1.00"}</>
-                          )}
-                        </button>
-                      </div>
-                    </motion.div>
-                  )}
-                </AnimatePresence>
-
-                {/* Status Bar */}
-                <div className="flex items-center justify-between px-1.5 mb-3 text-[9px] text-zinc-900 dark:text-white flex-none">
-                  <span>9:41</span>
-                  <div className="flex items-center gap-1">
-                    <div className="w-3 h-1.5 bg-zinc-900 dark:bg-white rounded-sm" />
-                    <div className="w-3 h-1.5 border border-zinc-900 dark:border-white rounded-sm" />
-                  </div>
-                </div>
-
-                {/* App Header */}
-                <div className="flex items-center justify-between mb-4 flex-none">
-                  <div>
-                    <h3 className="font-bold text-[13px] text-zinc-900 dark:text-white">{config.appName || "Demo App"}</h3>
-                    <p className="text-[10px] text-zinc-500">Powered by Juspay</p>
-                  </div>
-                  <div className={cn("w-8 h-8 rounded-full flex items-center justify-center text-[10px] font-bold flex-none", activeTheme.bg, activeTheme.text)}>
-                    {config.merchantId?.charAt(0).toUpperCase() || "M"}
-                  </div>
-                </div>
-
-                {/* SDK Status Indicator */}
-                <div className="mb-3 flex-none">
-                  <div className={cn(
-                    "flex items-center gap-2 px-3 py-2 rounded-lg text-[10px]",
-                    sdkStatus === "ready" ? "bg-green-50 text-green-700 dark:bg-green-950/20 dark:text-green-400" :
-                    sdkStatus === "initiating" ? "bg-amber-50 text-amber-700 dark:bg-amber-950/20 dark:text-amber-400" :
-                    sdkStatus === "processing" ? "bg-blue-50 text-blue-700 dark:bg-blue-950/20 dark:text-blue-400" :
-                    sdkStatus === "success" ? "bg-green-50 text-green-700" :
-                    sdkStatus === "error" ? "bg-red-50 text-red-700" :
-                    "bg-zinc-50 text-zinc-600 dark:bg-zinc-800 dark:text-zinc-400"
-                  )}>
-                    <div className={cn(
-                      "w-2 h-2 rounded-full",
-                      sdkStatus === "ready" ? "bg-green-500" :
-                      sdkStatus === "initiating" ? "bg-amber-500 animate-pulse" :
-                      sdkStatus === "processing" ? "bg-blue-500 animate-pulse" :
-                      sdkStatus === "success" ? "bg-green-500" :
-                      sdkStatus === "error" ? "bg-red-500" :
-                      "bg-zinc-400"
-                    )} />
-                    <span className="font-medium">
-                      {sdkStatus === "idle" && "SDK Not Initialized"}
-                      {sdkStatus === "initiating" && "Initializing SDK..."}
-                      {sdkStatus === "ready" && "SDK Ready"}
-                      {sdkStatus === "processing" && "Processing Payment..."}
-                      {sdkStatus === "success" && "Payment Successful"}
-                      {sdkStatus === "error" && "Payment Failed"}
-                      {sdkStatus === "cancelled" && "Payment Cancelled"}
-                    </span>
-                  </div>
-                </div>
-
-                {/* Welcome Text */}
-                <div className="mb-3 flex-none">
-                  <p className="text-base font-semibold text-zinc-900 dark:text-white">Hello! 👋</p>
-                  <p className="text-[10px] text-zinc-500 mt-0.5">Complete your purchase securely</p>
-                </div>
-
-                {/* Product Card */}
-                <Card className="mb-3 border-zinc-200 dark:border-zinc-800 shadow-sm flex-none">
-                  <CardContent className="p-2.5">
-                    <div className="flex items-center gap-2.5">
-                      <div className="w-10 h-10 bg-gradient-to-br from-zinc-100 to-zinc-200 dark:from-zinc-800 dark:to-zinc-700 rounded-lg flex items-center justify-center flex-none">
-                        <Smartphone className="w-5 h-5 text-zinc-400" />
-                      </div>
-                      <div className="flex-1 min-w-0">
-                        <p className="font-semibold text-[13px] text-zinc-900 dark:text-white truncate">Premium Plan</p>
-                        <p className="text-[10px] text-zinc-500">Monthly subscription</p>
-                        <div className="flex items-baseline gap-1 mt-0.5">
-                          <span className="text-[13px] font-bold text-zinc-900 dark:text-white">₹1.00</span>
-                          <span className="text-[9px] text-zinc-500 line-through">₹99.00</span>
-                        </div>
-                      </div>
-                    </div>
-                  </CardContent>
-                </Card>
-
-                {/* Spacer */}
-                <div className="flex-1 min-h-2" />
-
-                {/* Pay Button */}
-                <motion.button
-                  whileHover={{ scale: sdkStatus === "ready" ? 1.02 : 1 }}
-                  whileTap={{ scale: sdkStatus === "ready" ? 0.98 : 1 }}
-                  disabled={sdkStatus !== "ready"}
+        {/* Preview Mode Toggle */}
+        <div className="flex-none px-6 py-3 border-b border-zinc-200 dark:border-zinc-800 bg-zinc-50/50 dark:bg-zinc-900/50">
+          <div className="flex items-center justify-between">
+            <div className="flex items-center gap-3">
+              <span className="text-sm font-medium text-zinc-700 dark:text-zinc-300">Preview Mode:</span>
+              <div className="flex items-center bg-white dark:bg-zinc-800 rounded-lg p-1 border border-zinc-200 dark:border-zinc-700">
+                <button
+                  onClick={() => setPreviewMode('simulated')}
                   className={cn(
-                    "w-full py-2.5 rounded-lg font-bold text-[13px] text-white flex-none",
-                    sdkStatus === "ready" ? activeTheme.primary : "bg-zinc-300 cursor-not-allowed",
-                    "shadow-lg",
-                    "flex items-center justify-center gap-1"
+                    "px-3 py-1.5 rounded-md text-xs font-medium transition-all",
+                    previewMode === 'simulated'
+                      ? "bg-violet-100 text-violet-700 dark:bg-violet-900/30 dark:text-violet-400"
+                      : "text-zinc-500 hover:text-zinc-700 dark:hover:text-zinc-300"
                   )}
-                  onClick={() => {
-                    setShowPaymentUI(true);
-                    addLog('info', 'User clicked Pay button');
-                  }}
                 >
-                  {sdkStatus === "initiating" ? (
-                    <><RefreshCw className="w-3.5 h-3.5 animate-spin" /> Initializing...</>
-                  ) : sdkStatus === "ready" ? (
-                    <><Zap className="w-3.5 h-3.5" /> Pay ₹1.00</>
-                  ) : (
-                    <><Zap className="w-3.5 h-3.5" /> Pay ₹1.00</>
+                  Simulated SDK
+                </button>
+                <button
+                  onClick={() => setPreviewMode('real')}
+                  disabled={!paymentPageUrl}
+                  className={cn(
+                    "px-3 py-1.5 rounded-md text-xs font-medium transition-all flex items-center gap-1.5",
+                    previewMode === 'real'
+                      ? "bg-green-100 text-green-700 dark:bg-green-900/30 dark:text-green-400"
+                      : "text-zinc-500 hover:text-zinc-700 dark:hover:text-zinc-300",
+                    !paymentPageUrl && "opacity-50 cursor-not-allowed"
                   )}
-                </motion.button>
-
-                {/* Security Badge */}
-                <div className="flex items-center justify-center gap-1 mt-1.5 text-[9px] text-zinc-400 flex-none">
-                  <ShieldCheck className="w-3 h-3" />
-                  <span>Secured by Juspay | PCI-DSS Compliant</span>
-                </div>
+                >
+                  <span className={cn("w-1.5 h-1.5 rounded-full", paymentPageUrl ? "bg-green-500" : "bg-zinc-400")} />
+                  Real HyperCheckout
+                </button>
               </div>
             </div>
+            {paymentPageUrl && (
+              <div className="flex items-center gap-2 text-xs text-green-600 dark:text-green-400">
+                <Check className="w-3.5 h-3.5" />
+                Live order created: {orderDetails?.orderId.slice(-8)}
+              </div>
+            )}
+            {!paymentPageUrl && config.apiKey && (
+              <div className="flex items-center gap-2 text-xs text-amber-600 dark:text-amber-400">
+                <AlertCircle className="w-3.5 h-3.5" />
+                Using demo mode (check credentials)
+              </div>
+            )}
+          </div>
+        </div>
+
+        {/* Main Content - Flex Row Layout */}
+        <div className="flex-1 flex flex-row min-h-0">
+          {/* Phone Mockup / Real Payment Page - Left Side */}
+          <div className="w-[50%] flex items-center justify-center bg-gradient-to-br from-zinc-50 to-zinc-100 dark:from-zinc-900 dark:to-zinc-950 p-4 overflow-auto">
+            {previewMode === 'real' && paymentPageUrl ? (
+              /* Real Juspay Payment Page in iframe */
+              <div
+                className="relative bg-zinc-900 rounded-[1.25rem] border-[4px] border-zinc-800 shadow-2xl overflow-hidden"
+                style={{
+                  width: '180px',
+                  height: '350px',
+                  flexShrink: 0,
+                }}
+              >
+                {/* Phone buttons */}
+                <div className="absolute -right-[12px] top-24 w-[4px] h-10 bg-zinc-700 rounded-r" />
+                <div className="absolute -right-[12px] top-36 w-[4px] h-14 bg-zinc-700 rounded-r" />
+                <div className="absolute -left-[12px] top-32 w-[4px] h-7 bg-zinc-700 rounded-l" />
+
+                {/* Phone notch */}
+                <div className="absolute top-0 left-1/2 -translate-x-1/2 w-28 h-6 bg-zinc-800 rounded-b-2xl z-20 flex items-center justify-center gap-2">
+                  <div className="w-2 h-2 rounded-full bg-zinc-600" />
+                  <div className="w-16 h-1 bg-zinc-700 rounded-full" />
+                </div>
+
+                {/* Real Payment Page iframe */}
+                <div className="w-full h-full bg-white rounded-[1.8rem] pt-6 overflow-hidden">
+                  <iframe
+                    src={paymentPageUrl}
+                    className="w-full h-full border-0"
+                    title="Juspay HyperCheckout"
+                    allow="payment"
+                    sandbox="allow-scripts allow-same-origin allow-forms allow-popups"
+                  />
+                </div>
+
+                {/* Overlay when processing */}
+                {sdkStatus === 'processing' && (
+                  <div className="absolute inset-0 bg-black/50 flex items-center justify-center rounded-[1.8rem]">
+                    <div className="bg-white dark:bg-zinc-800 rounded-xl p-4 flex items-center gap-3">
+                      <RefreshCw className="w-5 h-5 animate-spin text-violet-600" />
+                      <span className="text-sm font-medium">Processing...</span>
+                    </div>
+                  </div>
+                )}
+              </div>
+            ) : (
+              /* Android Phone with Real SDK Simulation - Scaled down 44% */
+              <div style={{ transform: 'scale(0.56)', transformOrigin: 'center center' }}>
+                <AndroidPhonePreview
+                  merchantId={config.merchantId}
+                  clientId={config.clientId}
+                  apiKey={config.apiKey}
+                  environment={config.environment}
+                  onLog={addLog}
+                  sessionPayload={sessionPayload}
+                  orderDetails={orderDetails}
+                  sdkStatus={sdkStatus}
+                  onSdkStatusChange={setSdkStatus}
+                  paymentPageUrl={paymentPageUrl}
+                  onUseRealPage={() => {
+                    setPreviewMode('real');
+                    addLog('info', 'Switched to Real Juspay Page mode');
+                  }}
+                />
+              </div>
+            )}
           </div>
 
-          {/* Logs Panel - Right Side - 45% width */}
-          <div className="w-[45%] bg-white dark:bg-zinc-950 border-l border-zinc-200 dark:border-zinc-800 flex flex-col">
-            <CardHeader className="border-b border-zinc-100 dark:border-zinc-800 flex-none py-4 px-6">
+          {/* Logs Panel - Right Side - 50% width */}
+          <div className="w-[50%] bg-white dark:bg-zinc-950 border-l border-zinc-200 dark:border-zinc-800 flex flex-col">
+            <CardHeader className="border-b border-zinc-100 dark:border-zinc-800 flex-none py-4 px-6 bg-zinc-50/50 dark:bg-zinc-900/50">
               <div className="flex items-center justify-between">
                 <div>
                   <CardTitle className="text-base flex items-center gap-2">
                     <Terminal className="w-5 h-5 text-zinc-500" />
-                    Integration Logs
+                    SDK Integration Logs
                   </CardTitle>
-                  <CardDescription>Real-time SDK activity monitor</CardDescription>
+                  <CardDescription className="text-xs">Real-time HyperCheckout SDK lifecycle events</CardDescription>
                 </div>
                 <Button
                   variant="ghost"
@@ -1480,6 +1451,7 @@ For support: developer@juspay.io
                     setLogs([]);
                     setSdkStatus("idle");
                   }}
+                  className="text-xs"
                 >
                   Clear
                 </Button>
@@ -1487,82 +1459,142 @@ For support: developer@juspay.io
             </CardHeader>
             <CardContent className="flex-1 flex flex-col p-0 min-h-0">
               {/* Scrollable Logs Area */}
-              <div className="flex-1 bg-slate-950 p-4 font-mono text-xs space-y-1.5 overflow-y-auto min-h-0">
+              <div className="flex-1 bg-slate-950 p-4 font-mono text-xs space-y-2 overflow-y-auto min-h-0">
                 {logs.length === 0 ? (
-                  <div className="text-zinc-600 italic">Click "Start SDK" to begin simulation...</div>
+                  <div className="flex flex-col items-center justify-center h-full text-zinc-500 gap-3">
+                    <div className="w-12 h-12 rounded-full bg-zinc-800 flex items-center justify-center">
+                      <Terminal className="w-6 h-6" />
+                    </div>
+                    <p className="text-center">Waiting for SDK events...<br/>Click "Preview Integration" to start</p>
+                  </div>
                 ) : (
                   logs.map((log, i) => (
-                    <div key={i} className="flex gap-2">
-                      <span className="text-zinc-600 flex-none">[{log.timestamp}]</span>
+                    <motion.div
+                      key={i}
+                      initial={{ opacity: 0, x: -10 }}
+                      animate={{ opacity: 1, x: 0 }}
+                      className="flex gap-2 border-b border-zinc-800/50 pb-2 last:border-0"
+                    >
+                      <span className="text-zinc-600 flex-none text-[10px] pt-0.5">[{log.timestamp}]</span>
                       <span className={cn(
-                        "flex-none",
+                        "flex-none text-[10px] font-bold pt-0.5",
                         log.type === 'success' ? "text-green-400" :
                         log.type === 'error' ? "text-red-400" :
                         log.type === 'warning' ? "text-amber-400" :
-                        log.type === 'sdk' ? "text-blue-400" :
+                        log.type === 'sdk' ? "text-violet-400" :
                         "text-cyan-400"
                       )}>
-                        {log.type === 'success' ? '✓' :
-                         log.type === 'error' ? '✗' :
-                         log.type === 'warning' ? '!' :
-                         log.type === 'sdk' ? '◆' :
-                         '→'}
+                        {log.type === 'success' ? '[SUCCESS]' :
+                         log.type === 'error' ? '[ERROR]' :
+                         log.type === 'warning' ? '[WARN]' :
+                         log.type === 'sdk' ? '[SDK]' :
+                         '[INFO]'}
                       </span>
                       <div className="flex-1 min-w-0">
-                        <span className="text-zinc-300">{log.message}</span>
+                        <span className="text-zinc-200 text-xs">{log.message}</span>
                         {log.details && (
-                          <div className="mt-1 pl-4 text-zinc-500 whitespace-pre-wrap break-all text-[10px]">
+                          <div className="mt-1.5 p-2 bg-zinc-900 rounded border border-zinc-800 text-zinc-400 whitespace-pre-wrap break-all text-[10px] font-mono leading-relaxed">
                             {log.details}
                           </div>
                         )}
                       </div>
-                    </div>
+                    </motion.div>
                   ))
                 )}
                 <div ref={logsEndRef} />
               </div>
 
-              {/* SDK Control Footer */}
-              <div className="flex-none p-4 border-t border-zinc-100 dark:border-zinc-800 space-y-3">
-                <p className="text-sm font-medium text-zinc-700 dark:text-zinc-300">SDK Controls:</p>
-                <div className="flex flex-wrap gap-2">
+              {/* SDK Control Footer - Functional */}
+              <div className={cn(
+                "flex-none border-t border-zinc-200 dark:border-zinc-800 bg-zinc-50/50 dark:bg-zinc-900/50 transition-all",
+                sdkControlsMinimized ? "p-2" : "p-4"
+              )}>
+                <div className="flex items-center justify-between mb-2">
+                  <div className="flex items-center gap-2">
+                    <p className="text-sm font-semibold text-zinc-700 dark:text-zinc-300 flex items-center gap-2">
+                      <Settings className="w-4 h-4" />
+                      SDK Controls
+                    </p>
+                    {!sdkControlsMinimized && (
+                      <Badge variant={config.environment === "sandbox" ? "secondary" : "default"} className="text-[10px]">
+                        {config.environment === "sandbox" ? "🧪 Sandbox" : "🔴 Production"}
+                      </Badge>
+                    )}
+                  </div>
                   <Button
-                    variant="outline"
+                    variant="ghost"
                     size="sm"
-                    onClick={() => toast.success("Initiate SDK called")}
-                    className="h-10 flex-1 min-w-[120px]"
+                    onClick={() => setSdkControlsMinimized(!sdkControlsMinimized)}
+                    className="h-6 w-6 p-0"
                   >
-                    <RefreshCw className="w-4 h-4 mr-2" />
-                    Re-initiate
-                  </Button>
-                  <Button
-                    variant="outline"
-                    size="sm"
-                    onClick={() => toast.success("Process payment called")}
-                    className="h-10 flex-1 min-w-[120px]"
-                  >
-                    <Play className="w-4 h-4 mr-2" />
-                    Trigger Pay
-                  </Button>
-                </div>
-                <div className="flex flex-wrap gap-2">
-                  <Button
-                    variant="outline"
-                    size="sm"
-                    onClick={() => toast.error("Simulated: Payment failed")}
-                    className="h-10 flex-1 min-w-[120px] border-red-200 text-red-600 hover:bg-red-50"
-                  >
-                    Simulate Fail
-                  </Button>
-                  <Button
-                    variant="outline"
-                    size="sm"
-                    onClick={() => toast.success("Simulated: Payment success")}
-                    className="h-10 flex-1 min-w-[120px] border-green-200 text-green-600 hover:bg-green-50"
-                  >
-                    Simulate Success
+                    {sdkControlsMinimized ? <ChevronUp className="w-4 h-4" /> : <ChevronDown className="w-4 h-4" />}
                   </Button>
                 </div>
+
+                {!sdkControlsMinimized && (<>
+
+                {/* Order ID Input */}
+                <div className="mb-3 space-y-1.5">
+                  <Label htmlFor="merchantOrderId" className="text-xs font-medium text-zinc-600 dark:text-zinc-400">
+                    Order ID (from Session API)
+                  </Label>
+                  <Input
+                    id="merchantOrderId"
+                    placeholder="Paste order_id from POST /session response"
+                    value={merchantOrderId}
+                    onChange={(e) => setMerchantOrderId(e.target.value)}
+                    className="h-8 text-xs"
+                  />
+                </div>
+
+                {/* SDK Payload Input */}
+                <div className="mb-3 space-y-1.5">
+                  <Label htmlFor="merchantSdkPayload" className="text-xs font-medium text-zinc-600 dark:text-zinc-400">
+                    SDK Payload (JSON from Session API)
+                  </Label>
+                  <textarea
+                    id="merchantSdkPayload"
+                    placeholder='Paste sdk_payload JSON from Session API response&#10;Example: {"requestId":"...","service":"...","payload":{...}}'
+                    value={merchantSdkPayload}
+                    onChange={(e) => setMerchantSdkPayload(e.target.value)}
+                    className="w-full h-24 px-3 py-2 text-xs bg-white dark:bg-zinc-950 border border-zinc-300 dark:border-zinc-700 rounded-md resize-none focus:outline-none focus:ring-2 focus:ring-violet-500"
+                  />
+                  <p className="text-[10px] text-zinc-500">
+                    Create order via: <code className="bg-zinc-200 dark:bg-zinc-700 px-1 rounded">POST https://sandbox.juspay.in/session</code>
+                  </p>
+                </div>
+
+                <Button
+                  variant="outline"
+                  size="sm"
+                  onClick={() => {
+                    addLog('info', '=== Initializing HyperCheckout SDK ===');
+                    simulateInitiate();
+                  }}
+                  disabled={sdkStatus === "initiating" || sdkStatus === "processing" || !merchantOrderId || !merchantSdkPayload}
+                  className="w-full h-10 text-xs"
+                >
+                  <RefreshCw className={cn("w-3.5 h-3.5 mr-1.5", sdkStatus === "initiating" && "animate-spin")} />
+                  Initialize SDK
+                </Button>
+
+                {/* Connection Status */}
+                <div className="mt-3 pt-3 border-t border-zinc-200 dark:border-zinc-800 flex items-center justify-between text-[10px] text-zinc-500">
+                  <div className="flex items-center gap-2">
+                    <div className={cn(
+                      "w-2 h-2 rounded-full",
+                      sdkStatus === "idle" ? "bg-zinc-400" :
+                      sdkStatus === "ready" ? "bg-green-500" :
+                      "bg-amber-500 animate-pulse"
+                    )} />
+                    <span>SDK {sdkStatus === "idle" ? "Disconnected" : sdkStatus === "ready" ? "Connected" : "Busy"}</span>
+                  </div>
+                  <div className="flex items-center gap-3">
+                    <span>Merchant: <span className="text-zinc-700 dark:text-zinc-300">{config.merchantId || "—"}</span></span>
+                    <span>Client: <span className="text-zinc-700 dark:text-zinc-300">{config.clientId || "—"}</span></span>
+                  </div>
+                </div>
+                </>)}
               </div>
             </CardContent>
           </div>
@@ -1601,18 +1633,6 @@ For support: developer@juspay.io
           >
             <Zap className="w-4 h-4 mr-2" />
             Quick Integrator
-          </TabsTrigger>
-          <TabsTrigger
-            value="documentation"
-            className={cn(
-              "px-4 py-2 rounded-lg text-sm font-medium transition-all",
-              "data-[state=active]:bg-white data-[state=active]:shadow-sm",
-              "data-[state=active]:text-zinc-900 dark:data-[state=active]:text-white",
-              "data-[state=inactive]:text-zinc-500 dark:data-[state=inactive]:text-zinc-400"
-            )}
-          >
-            <FileCode className="w-4 h-4 mr-2" />
-            Documentation
           </TabsTrigger>
         </TabsList>
 
