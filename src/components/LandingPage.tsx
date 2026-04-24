@@ -96,25 +96,25 @@ export function LandingPage({ onStart, onAIAssistant, onAppIntegrator, activeThe
   const opacity = useTransform(scrollYProgress, [0, 0.5], [1, 0]);
 
   return (
-    <div ref={containerRef} className="relative min-h-screen overflow-hidden">
+    <div ref={containerRef} className="relative min-h-screen">
       {/* Background Elements */}
       <GradientOrbs activeTheme={activeTheme} />
       <FloatingParticles color={activeTheme.text} />
 
       {/* Grid Pattern Overlay */}
       <div
-        className="absolute inset-0 opacity-[0.03] dark:opacity-[0.05]"
+        className="fixed inset-0 opacity-[0.03] dark:opacity-[0.05] pointer-events-none"
         style={{
           backgroundImage: `linear-gradient(to right, currentColor 1px, transparent 1px), linear-gradient(to bottom, currentColor 1px, transparent 1px)`,
           backgroundSize: "60px 60px",
         }}
       />
 
-      {/* Hero Section */}
+      {/* Hero Section with Scroll Fade */}
       <motion.div style={{ y, opacity }} className="relative z-10">
-        <div className="min-h-[calc(100vh-80px)] flex flex-col items-center justify-center py-12 px-6">
+        <div className="flex flex-col items-center justify-center pt-6 sm:pt-12 pb-4 sm:pb-8 px-4 sm:px-6">
           {/* Hero Content */}
-          <div className="max-w-5xl text-center space-y-10">
+          <div className="max-w-5xl text-center space-y-5 sm:space-y-10">
             {/* Floating Bar Banner */}
             <motion.div
               initial={{ opacity: 0, y: 20 }}
@@ -131,10 +131,10 @@ export function LandingPage({ onStart, onAIAssistant, onAppIntegrator, activeThe
                 <div className="absolute -inset-1 bg-gradient-to-r from-violet-500 via-fuchsia-500 to-orange-500 rounded-2xl blur-xl opacity-50" />
 
                 {/* Main bar */}
-                <div className="relative flex items-center gap-6 px-6 py-3 rounded-2xl bg-zinc-900 dark:bg-white border border-zinc-800 dark:border-zinc-200 shadow-2xl">
+                <div className="relative flex flex-col sm:flex-row items-center gap-3 sm:gap-6 px-4 sm:px-6 py-3 rounded-2xl bg-zinc-900 dark:bg-white border border-zinc-800 dark:border-zinc-200 shadow-2xl">
                   {/* AI Assistant */}
                   <motion.div
-                    className="group flex items-center gap-2.5 cursor-pointer"
+                    className="group flex items-center gap-2.5 cursor-pointer w-full sm:w-auto justify-center sm:justify-start"
                     onClick={onAIAssistant}
                     whileHover={{ scale: 1.05 }}
                     whileTap={{ scale: 0.95 }}
@@ -153,11 +153,12 @@ export function LandingPage({ onStart, onAIAssistant, onAppIntegrator, activeThe
                   </motion.div>
 
                   {/* Divider */}
-                  <div className="w-px h-8 bg-zinc-700 dark:bg-zinc-300" />
+                  <div className="hidden sm:block w-px h-8 bg-zinc-700 dark:bg-zinc-300" />
+                  <div className="sm:hidden w-full h-px bg-zinc-700 dark:bg-zinc-300" />
 
                   {/* App Integrator */}
                   <motion.div
-                    className="group flex items-center gap-2.5 cursor-pointer"
+                    className="group flex items-center gap-2.5 cursor-pointer w-full sm:w-auto justify-center sm:justify-start"
                     onClick={onAppIntegrator}
                     whileHover={{ scale: 1.05 }}
                     whileTap={{ scale: 0.95 }}
@@ -184,7 +185,7 @@ export function LandingPage({ onStart, onAIAssistant, onAppIntegrator, activeThe
               animate={{ opacity: 1 }}
               transition={{ duration: 0.5, delay: 0.2 }}
             >
-              <h1 className="text-5xl md:text-7xl lg:text-8xl font-bold tracking-tight leading-[1.1]">
+              <h1 className="text-3xl sm:text-5xl md:text-7xl lg:text-8xl font-bold tracking-tight leading-[1.1]">
                 <motion.span
                   initial={{ opacity: 0, y: 40 }}
                   animate={{ opacity: 1, y: 0 }}
@@ -197,7 +198,7 @@ export function LandingPage({ onStart, onAIAssistant, onAppIntegrator, activeThe
                   initial={{ opacity: 0, y: 40 }}
                   animate={{ opacity: 1, y: 0 }}
                   transition={{ duration: 0.6, delay: 0.45 }}
-                  className={cn("block mt-2", activeTheme.text)}
+                  className={cn("block mt-1 sm:mt-2", activeTheme.text)}
                 >
                   Future of Payments
                 </motion.span>
@@ -271,150 +272,152 @@ export function LandingPage({ onStart, onAIAssistant, onAppIntegrator, activeThe
               </motion.a>
             </motion.div>
           </div>
-
-          {/* Features Grid */}
-          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6 mt-32 max-w-6xl w-full px-4">
-            <FeatureCard
-              icon={<ShieldCheck className="w-8 h-8" />}
-              title="API Simulation"
-              description="Simulate full Juspay API lifecycles including Orders, Sessions, and Refunds with real-time response feedback."
-              delay={0.3}
-              activeTheme={activeTheme}
-              index={0}
-            />
-            <FeatureCard
-              icon={<Monitor className="w-8 h-8" />}
-              title="Live Interface"
-              description="Visualize how checkout interfaces and customized flows will look on devices with our real-time simulator."
-              delay={0.4}
-              activeTheme={activeTheme}
-              index={1}
-            />
-            <FeatureCard
-              icon={<MessageSquare className="w-8 h-8" />}
-              title="AI Support Agent"
-              description="Integrated AI agent to handle merchant queries, provide technical guidance, and suggest optimal integration plans."
-              delay={0.5}
-              activeTheme={activeTheme}
-              index={2}
-            />
-            <FeatureCard
-              icon={<Layers className="w-8 h-8" />}
-              title="App Integrator"
-              description="Configure and test HyperCheckout SDK integration parameters directly within the playground environment."
-              delay={0.6}
-              activeTheme={activeTheme}
-              index={3}
-            />
-          </div>
-
-          {/* Tech Stack Marquee */}
-          <motion.div
-            initial={{ opacity: 0 }}
-            whileInView={{ opacity: 1 }}
-            viewport={{ once: true }}
-            className="mt-24 w-full max-w-6xl overflow-hidden"
-          >
-            <p className="text-center text-sm text-zinc-500 dark:text-zinc-500 mb-8 font-medium uppercase tracking-widest">
-              Supports All Major Platforms
-            </p>
-            <div className="relative">
-              <div className="flex gap-8 animate-marquee">
-                {[...Array(2)].map((_, setIndex) => (
-                  <div key={setIndex} className="flex gap-8 shrink-0">
-                    {["React", "Android", "iOS", "Flutter", "React Native", "Capacitor", "Cordova"].map(
-                      (tech, i) => (
-                        <motion.div
-                          key={`${setIndex}-${i}`}
-                          whileHover={{ scale: 1.1, y: -2 }}
-                          className={cn(
-                            "px-6 py-3 rounded-full glass text-sm font-medium",
-                            "text-zinc-700 dark:text-zinc-300 border border-zinc-200 dark:border-zinc-700"
-                          )}
-                        >
-                          {tech}
-                        </motion.div>
-                      )
-                    )}
-                  </div>
-                ))}
-              </div>
-            </div>
-          </motion.div>
-
-          {/* Platform Stats */}
-          <motion.div
-            initial={{ opacity: 0, y: 30 }}
-            whileInView={{ opacity: 1, y: 0 }}
-            viewport={{ once: true }}
-            className="mt-16 w-full max-w-5xl"
-          >
-            <div className="grid grid-cols-2 md:grid-cols-4 gap-6">
-              <div className="text-center p-4 rounded-2xl bg-zinc-50 dark:bg-zinc-900/50 border border-zinc-200 dark:border-zinc-800">
-                <div className="text-xs text-zinc-500 dark:text-zinc-500 uppercase tracking-wider mb-1">PCI-DSS Level 1</div>
-                <div className="text-lg font-bold text-zinc-900 dark:text-white">Secure</div>
-              </div>
-              <div className="text-center p-4 rounded-2xl bg-zinc-50 dark:bg-zinc-900/50 border border-zinc-200 dark:border-zinc-800">
-                <div className="text-xs text-zinc-500 dark:text-zinc-500 uppercase tracking-wider mb-1">Processing Time</div>
-                <div className="text-lg font-bold text-zinc-900 dark:text-white">&lt; 200ms</div>
-              </div>
-              <div className="text-center p-4 rounded-2xl bg-zinc-50 dark:bg-zinc-900/50 border border-zinc-200 dark:border-zinc-800">
-                <div className="text-xs text-zinc-500 dark:text-zinc-500 uppercase tracking-wider mb-1">Daily Scalability</div>
-                <div className="text-lg font-bold text-zinc-900 dark:text-white">100M+</div>
-              </div>
-              <div className="text-center p-4 rounded-2xl bg-zinc-50 dark:bg-zinc-900/50 border border-zinc-200 dark:border-zinc-800">
-                <div className="text-xs text-zinc-500 dark:text-zinc-500 uppercase tracking-wider mb-1">Integration Time</div>
-                <div className="text-lg font-bold text-zinc-900 dark:text-white">2 Days</div>
-              </div>
-            </div>
-          </motion.div>
-
-          {/* Secondary Stats/Features */}
-          <motion.div
-            initial={{ opacity: 0, y: 40 }}
-            whileInView={{ opacity: 1, y: 0 }}
-            viewport={{ once: true }}
-            className="mt-32 pt-20 border-t border-zinc-200 dark:border-zinc-800 w-full max-w-6xl"
-          >
-            <div className="grid grid-cols-2 lg:grid-cols-4 gap-8">
-              <Stat
-                icon={<ShieldCheck className="w-5 h-5" />}
-                label="PCI-DSS Level 1 Secure"
-                value="Certified"
-                delay={0}
-                activeTheme={activeTheme}
-              />
-              <Stat
-                icon={<Zap className="w-5 h-5" />}
-                label="Processing Time"
-                value="< 200ms"
-                delay={0.1}
-                activeTheme={activeTheme}
-                isNumeric
-                numericValue={200}
-                suffix="ms"
-              />
-              <Stat
-                icon={<Layers className="w-5 h-5" />}
-                label="Daily Scalability"
-                value="100M+"
-                delay={0.2}
-                activeTheme={activeTheme}
-                isNumeric
-                numericValue={100}
-                suffix="M+"
-              />
-              <Stat
-                icon={<Cpu className="w-5 h-5" />}
-                label="Integration Time"
-                value="2 Days"
-                delay={0.3}
-                activeTheme={activeTheme}
-              />
-            </div>
-          </motion.div>
         </div>
       </motion.div>
+
+      {/* Features Grid - Outside scroll fade */}
+      <div className="relative z-20 flex flex-col items-center px-4 sm:px-6 py-8 sm:py-16">
+        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4 sm:gap-6 max-w-6xl w-full px-2 sm:px-4">
+          <FeatureCard
+            icon={<ShieldCheck className="w-8 h-8" />}
+            title="API Simulation"
+            description="Simulate full Juspay API lifecycles including Orders, Sessions, and Refunds with real-time response feedback."
+            delay={0.3}
+            activeTheme={activeTheme}
+            index={0}
+          />
+          <FeatureCard
+            icon={<Monitor className="w-8 h-8" />}
+            title="Live Interface"
+            description="Visualize how checkout interfaces and customized flows will look on devices with our real-time simulator."
+            delay={0.4}
+            activeTheme={activeTheme}
+            index={1}
+          />
+          <FeatureCard
+            icon={<MessageSquare className="w-8 h-8" />}
+            title="AI Support Agent"
+            description="Integrated AI agent to handle merchant queries, provide technical guidance, and suggest optimal integration plans."
+            delay={0.5}
+            activeTheme={activeTheme}
+            index={2}
+          />
+          <FeatureCard
+            icon={<Layers className="w-8 h-8" />}
+            title="App Integrator"
+            description="Configure and test HyperCheckout SDK integration parameters directly within the playground environment."
+            delay={0.6}
+            activeTheme={activeTheme}
+            index={3}
+          />
+        </div>
+
+        {/* Tech Stack Marquee */}
+        <motion.div
+          initial={{ opacity: 0 }}
+          whileInView={{ opacity: 1 }}
+          viewport={{ once: true }}
+          className="mt-16 sm:mt-24 w-full max-w-6xl overflow-hidden"
+        >
+          <p className="text-center text-sm text-zinc-500 dark:text-zinc-500 mb-8 font-medium uppercase tracking-widest">
+            Supports All Major Platforms
+          </p>
+          <div className="relative">
+            <div className="flex gap-8 animate-marquee">
+              {[...Array(2)].map((_, setIndex) => (
+                <div key={setIndex} className="flex gap-8 shrink-0">
+                  {["React", "Android", "iOS", "Flutter", "React Native", "Capacitor", "Cordova"].map(
+                    (tech, i) => (
+                      <motion.div
+                        key={`${setIndex}-${i}`}
+                        whileHover={{ scale: 1.1, y: -2 }}
+                        className={cn(
+                          "px-6 py-3 rounded-full glass text-sm font-medium",
+                          "text-zinc-700 dark:text-zinc-300 border border-zinc-200 dark:border-zinc-700"
+                        )}
+                      >
+                        {tech}
+                      </motion.div>
+                    )
+                  )}
+                </div>
+              ))}
+            </div>
+          </div>
+        </motion.div>
+
+        {/* Platform Stats */}
+        <motion.div
+          initial={{ opacity: 0, y: 30 }}
+          whileInView={{ opacity: 1, y: 0 }}
+          viewport={{ once: true }}
+          className="mt-12 sm:mt-16 w-full max-w-5xl px-2 sm:px-0"
+        >
+          <div className="grid grid-cols-2 sm:grid-cols-4 gap-3 sm:gap-6">
+            <div className="text-center p-3 sm:p-4 rounded-xl sm:rounded-2xl bg-zinc-50 dark:bg-zinc-900/50 border border-zinc-200 dark:border-zinc-800">
+              <div className="text-[10px] sm:text-xs text-zinc-500 dark:text-zinc-500 uppercase tracking-wider mb-1">PCI-DSS Level 1</div>
+              <div className="text-base sm:text-lg font-bold text-zinc-900 dark:text-white">Secure</div>
+            </div>
+            <div className="text-center p-3 sm:p-4 rounded-xl sm:rounded-2xl bg-zinc-50 dark:bg-zinc-900/50 border border-zinc-200 dark:border-zinc-800">
+              <div className="text-[10px] sm:text-xs text-zinc-500 dark:text-zinc-500 uppercase tracking-wider mb-1">Processing Time</div>
+              <div className="text-base sm:text-lg font-bold text-zinc-900 dark:text-white">&lt; 200ms</div>
+            </div>
+            <div className="text-center p-3 sm:p-4 rounded-xl sm:rounded-2xl bg-zinc-50 dark:bg-zinc-900/50 border border-zinc-200 dark:border-zinc-800">
+              <div className="text-[10px] sm:text-xs text-zinc-500 dark:text-zinc-500 uppercase tracking-wider mb-1">Daily Scalability</div>
+              <div className="text-base sm:text-lg font-bold text-zinc-900 dark:text-white">100M+</div>
+            </div>
+            <div className="text-center p-3 sm:p-4 rounded-xl sm:rounded-2xl bg-zinc-50 dark:bg-zinc-900/50 border border-zinc-200 dark:border-zinc-800">
+              <div className="text-[10px] sm:text-xs text-zinc-500 dark:text-zinc-500 uppercase tracking-wider mb-1">Integration Time</div>
+              <div className="text-base sm:text-lg font-bold text-zinc-900 dark:text-white">2 Days</div>
+            </div>
+          </div>
+        </motion.div>
+
+        {/* Secondary Stats/Features */}
+        <motion.div
+          initial={{ opacity: 0, y: 40 }}
+          whileInView={{ opacity: 1, y: 0 }}
+          viewport={{ once: true }}
+          className="mt-8 sm:mt-16 pt-4 sm:pt-8 border-t border-zinc-200 dark:border-zinc-800 w-full max-w-6xl pb-4"
+        >
+          <div className="grid grid-cols-2 lg:grid-cols-4 gap-2 sm:gap-4">
+            <Stat
+              icon={<ShieldCheck className="w-5 h-5" />}
+              label="PCI-DSS Level 1 Secure"
+              value="Certified"
+              delay={0}
+              activeTheme={activeTheme}
+            />
+            <Stat
+              icon={<Zap className="w-5 h-5" />}
+              label="Processing Time"
+              value="< 200ms"
+              delay={0.1}
+              activeTheme={activeTheme}
+              isNumeric
+              numericValue={200}
+              suffix="ms"
+            />
+            <Stat
+              icon={<Layers className="w-5 h-5" />}
+              label="Daily Scalability"
+              value="100M+"
+              delay={0.2}
+              activeTheme={activeTheme}
+              isNumeric
+              numericValue={100}
+              suffix="M+"
+            />
+            <Stat
+              icon={<Cpu className="w-5 h-5" />}
+              label="Integration Time"
+              value="2 Days"
+              delay={0.3}
+              activeTheme={activeTheme}
+            />
+          </div>
+        </motion.div>
+      </div>
 
       {/* Add marquee styles */}
       <style>{`
@@ -430,14 +433,17 @@ export function LandingPage({ onStart, onAIAssistant, onAppIntegrator, activeThe
         }
       `}</style>
 
-      {/* Copyright Footer */}
-      <footer className="w-full py-8 mt-16 border-t border-zinc-200 dark:border-zinc-800">
-        <div className="text-center">
-          <p className="text-sm text-zinc-500 dark:text-zinc-500">
+      {/* Copyright Footer - Fixed at bottom */}
+      <footer className="fixed bottom-0 left-0 right-0 z-50 py-3 sm:py-4 border-t border-zinc-200 dark:border-zinc-800 bg-white/90 dark:bg-zinc-950/90 backdrop-blur-sm">
+        <div className="text-center px-4">
+          <p className="text-xs text-zinc-500 dark:text-zinc-500">
             © 2026 Juspay Technologies. All rights reserved.
           </p>
         </div>
       </footer>
+
+      {/* Spacer for fixed footer */}
+      <div className="h-12 sm:h-16" />
     </div>
   );
 }
