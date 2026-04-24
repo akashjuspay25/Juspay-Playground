@@ -260,84 +260,29 @@ export default function App() {
                 transition={{ delay: 0.6, type: "spring", stiffness: 200 }}
               >
                 <motion.svg
-                  viewBox="0 0 40 40"
-                  className="w-8 h-8"
+                  viewBox="0 0 60 40"
+                  className="w-10 h-8"
                   whileHover={{ scale: 1.1 }}
                 >
-                  {/* Table */}
-                  <rect x="4" y="28" width="32" height="2" rx="1" className="fill-zinc-400" />
-
-                  {/* Laptop */}
-                  <rect x="10" y="20" width="20" height="8" rx="1" className="fill-zinc-700 dark:fill-zinc-600" />
-                  <rect x="12" y="21" width="16" height="5" rx="0.5" className="fill-zinc-900" />
-
-                  {/* Code lines on screen */}
-                  <motion.rect
-                    x="14"
-                    y="22"
-                    width="8"
-                    height="1"
-                    rx="0.3"
-                    className={activeTheme.text}
-                    fill="currentColor"
-                    animate={{ opacity: [1, 0.3, 1], width: [8, 5, 8] }}
-                    transition={{ duration: 1.5, repeat: Infinity, delay: 0 }}
-                  />
-                  <motion.rect
-                    x="14"
-                    y="23.5"
-                    width="6"
-                    height="1"
-                    rx="0.3"
-                    className={activeTheme.text}
-                    fill="currentColor"
-                    opacity="0.7"
-                    animate={{ opacity: [0.7, 0.2, 0.7], width: [6, 8, 6] }}
-                    transition={{ duration: 1.5, repeat: Infinity, delay: 0.3 }}
-                  />
-                  <motion.rect
-                    x="14"
-                    y="25"
-                    width="10"
-                    height="1"
-                    rx="0.3"
-                    className={activeTheme.text}
-                    fill="currentColor"
-                    opacity="0.5"
-                    animate={{ opacity: [0.5, 0.2, 0.5], x: [14, 15, 14] }}
-                    transition={{ duration: 1.5, repeat: Infinity, delay: 0.6 }}
-                  />
+                  {/* Ground */}
+                  <rect x="0" y="35" width="40" height="2" rx="1" className="fill-zinc-400" />
 
                   {/* Boy Head */}
-                  <circle cx="20" cy="14" r="5" className="fill-zinc-700 dark:fill-zinc-600" />
+                  <circle cx="15" cy="12" r="5" className="fill-zinc-700 dark:fill-zinc-600" />
 
                   {/* Hair */}
                   <path
-                    d="M15 13c0-3 2.5-5 5-5s5 2 5 5"
+                    d="M10 11c0-3 2.5-5 5-5s5 2 5 5"
                     className="fill-zinc-800 dark:fill-zinc-500"
                   />
 
-                  {/* Eyes - Blinking */}
-                  <motion.circle
-                    cx="18"
-                    cy="14"
-                    r="0.8"
-                    className="fill-zinc-950"
-                    animate={{ scaleY: [1, 0.1, 1] }}
-                    transition={{ duration: 0.2, repeat: Infinity, repeatDelay: 3 }}
-                  />
-                  <motion.circle
-                    cx="22"
-                    cy="14"
-                    r="0.8"
-                    className="fill-zinc-950"
-                    animate={{ scaleY: [1, 0.1, 1] }}
-                    transition={{ duration: 0.2, repeat: Infinity, repeatDelay: 3 }}
-                  />
+                  {/* Eyes */}
+                  <circle cx="13" cy="12" r="0.8" className="fill-zinc-950" />
+                  <circle cx="17" cy="12" r="0.8" className="fill-zinc-950" />
 
                   {/* Smile */}
                   <path
-                    d="M18 16.5c0.5 0.5 1.5 0.5 2 0"
+                    d="M13 14.5c0.5 0.5 1.5 0.5 2 0"
                     stroke="currentColor"
                     className="stroke-zinc-950"
                     strokeWidth="0.5"
@@ -347,39 +292,78 @@ export default function App() {
 
                   {/* Body */}
                   <path
-                    d="M15 20c0-2 2-4 5-4s5 2 5 4v6h-10z"
+                    d="M10 18c0-2 2-4 5-4s5 2 5 4v10h-10z"
                     className="fill-zinc-600 dark:fill-zinc-500"
                   />
 
-                  {/* Arms - Typing */}
-                  <motion.path
-                    d="M13 22c0 0 2 3 4 5"
+                  {/* Left Arm - Balancing */}
+                  <path
+                    d="M10 20 L5 16"
                     className="stroke-zinc-600 dark:stroke-zinc-500"
                     strokeWidth="2"
                     strokeLinecap="round"
                     fill="none"
-                    animate={{ d: ["M13 22c0 0 2 3 4 5", "M13 22c0 0 3 2 5 4", "M13 22c0 0 2 3 4 5"] }}
-                    transition={{ duration: 0.3, repeat: Infinity }}
-                  />
-                  <motion.path
-                    d="M27 22c0 0-2 3-4 5"
-                    className="stroke-zinc-600 dark:stroke-zinc-500"
-                    strokeWidth="2"
-                    strokeLinecap="round"
-                    fill="none"
-                    animate={{ d: ["M27 22c0 0-2 3-4 5", "M27 22c0 0-3 2-5 4", "M27 22c0 0-2 3-4 5"] }}
-                    transition={{ duration: 0.3, repeat: Infinity, delay: 0.15 }}
                   />
 
-                  {/* Coding indicator */}
+                  {/* Right Arm - Raised for kick */}
+                  <motion.path
+                    d="M20 20 L25 14"
+                    className="stroke-zinc-600 dark:stroke-zinc-500"
+                    strokeWidth="2"
+                    strokeLinecap="round"
+                    fill="none"
+                    animate={{ d: ["M20 20 L25 14", "M20 20 L26 12", "M20 20 L25 14"] }}
+                    transition={{ duration: 0.5, repeat: Infinity, repeatDelay: 1.5 }}
+                  />
+
+                  {/* Left Leg - Standing */}
+                  <path
+                    d="M12 28 L12 35"
+                    className="stroke-zinc-600 dark:stroke-zinc-500"
+                    strokeWidth="2.5"
+                    strokeLinecap="round"
+                    fill="none"
+                  />
+
+                  {/* Right Leg - Kicking */}
+                  <motion.path
+                    d="M18 28 L22 32 L28 30"
+                    className="stroke-zinc-600 dark:stroke-zinc-500"
+                    strokeWidth="2.5"
+                    strokeLinecap="round"
+                    fill="none"
+                    animate={{ d: ["M18 28 L22 32 L28 30", "M18 28 L24 30 L32 28", "M18 28 L22 32 L28 30"] }}
+                    transition={{ duration: 0.3, repeat: Infinity, repeatDelay: 1.7 }}
+                  />
+
+                  {/* Football */}
                   <motion.circle
-                    cx="32"
-                    cy="8"
-                    r="2"
+                    cx="30"
+                    cy="33"
+                    r="3"
+                    className="fill-zinc-800 dark:fill-zinc-300"
+                    animate={{
+                      cx: [30, 45, 55, 30],
+                      cy: [33, 25, 30, 33],
+                      scale: [1, 0.9, 0.8, 1]
+                    }}
+                    transition={{ duration: 2, repeat: Infinity, repeatDelay: 0.5, ease: "easeOut" }}
+                  />
+
+                  {/* Motion trail */}
+                  <motion.circle
+                    cx="35"
+                    cy="30"
+                    r="1"
                     className={activeTheme.text}
                     fill="currentColor"
-                    animate={{ scale: [1, 1.3, 1], opacity: [0.5, 1, 0.5] }}
-                    transition={{ duration: 1, repeat: Infinity }}
+                    opacity="0"
+                    animate={{
+                      cx: [35, 50, 58],
+                      cy: [30, 22, 28],
+                      opacity: [0, 0.6, 0]
+                    }}
+                    transition={{ duration: 2, repeat: Infinity, repeatDelay: 0.5, delay: 0.1 }}
                   />
                 </motion.svg>
               </motion.div>
