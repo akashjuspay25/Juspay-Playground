@@ -194,6 +194,28 @@ const ENDPOINTS = [
     }
   },
   {
+    name: "Get Customer",
+    path: "/customers/{customer_id}",
+    method: "GET",
+    category: "Backend",
+    tags: ["HyperCheckout", "EC API", "EC SDK", "Common"],
+    defaultBody: {}
+  },
+  {
+    name: "Update Customer",
+    path: "/customers/{customer_id}",
+    method: "POST",
+    category: "Backend",
+    tags: ["HyperCheckout", "EC API", "EC SDK", "Common"],
+    defaultBody: {
+      first_name: "Jane",
+      last_name: "Smith",
+      email: "updated@example.com",
+      mobile_number: "9876543210",
+      description: "Updated customer details"
+    }
+  },
+  {
     name: "Create Mandate",
     path: "/mandates",
     method: "POST",
@@ -222,13 +244,87 @@ const ENDPOINTS = [
     category: "Backend",
     tags: ["HyperCheckout", "EC API", "EC SDK"],
     defaultBody: {}
+  },
+  {
+    name: "Calculate Surcharge",
+    path: "/surcharge",
+    method: "POST",
+    category: "Backend",
+    tags: ["HyperCheckout", "EC API", "EC SDK", "Surcharge"],
+    defaultBody: {
+      order_id: `ORD_${Math.floor(Math.random() * 1000000)}`,
+      amount: "1.00",
+      currency: "INR",
+      payment_method: "CARD",
+      payment_method_type: "CARD"
+    }
+  },
+  {
+    name: "Apply Offer",
+    path: "/offers/apply",
+    method: "POST",
+    category: "Backend",
+    tags: ["HyperCheckout", "EC API", "EC SDK", "Offers"],
+    defaultBody: {
+      order_id: `ORD_${Math.floor(Math.random() * 1000000)}`,
+      amount: "1.00",
+      currency: "INR",
+      offer_id: "OFFER_123",
+      customer_id: "customer_123"
+    }
+  },
+  {
+    name: "List Offers",
+    path: "/offers",
+    method: "GET",
+    category: "Backend",
+    tags: ["HyperCheckout", "EC API", "EC SDK", "Offers"],
+    defaultBody: {}
+  },
+  {
+    name: "Create Payout",
+    path: "/payouts",
+    method: "POST",
+    category: "Backend",
+    tags: ["HyperCheckout", "EC API", "Payouts"],
+    defaultBody: {
+      amount: "100.00",
+      currency: "INR",
+      beneficiary_name: "John Doe",
+      beneficiary_account_number: "123456789012",
+      beneficiary_ifsc: "HDFC0000123",
+      purpose: "PAYOUT",
+      unique_request_id: `PYT_${Math.floor(Math.random() * 1000000)}`
+    }
+  },
+  {
+    name: "Get Payout Status",
+    path: "/payouts/{payout_id}",
+    method: "GET",
+    category: "Backend",
+    tags: ["HyperCheckout", "EC API", "Payouts"],
+    defaultBody: {}
+  },
+  {
+    name: "SmartConvert Quote",
+    path: "/smartconvert/quote",
+    method: "POST",
+    category: "Backend",
+    tags: ["HyperCheckout", "EC API", "SmartConvert"],
+    defaultBody: {
+      amount: "100.00",
+      from_currency: "USD",
+      to_currency: "INR"
+    }
   }
 ];
 
 const WEBHOOK_SAMPLES = [
+  // Order-Level Webhooks
   {
     event: "ORDER_SUCCEEDED",
-    description: "Triggered when a payment is successful and the order is charged.",
+    category: "Order",
+    description: "Triggered when a payment is successful and the order status changes to CHARGED.",
     payload: {
       id: `evt_${Math.random().toString(36).substr(2, 9)}`,
       event_name: "ORDER_SUCCEEDED",
@@ -239,8 +335,15 @@ const WEBHOOK_SAMPLES = [
           amount: 1.00,
           currency: "INR",
           customer_id: "customer_123",
+          customer_email: "customer@example.com",
+          customer_phone: "9876543210",
           payment_method: "UPI",
-          payment_method_type: "UPI"
+          payment_method_type: "UPI",
+          txn_id: "TXN_123456789",
+          txn_uuid: "txn_uuid_abc123",
+          gateway_id: 1,
+          gateway_reference_id: "gateway_ref_123",
+          date_created: new Date().toISOString()
         }
       },
       created: new Date().toISOString()
@@ -248,7 +351,8 @@ const WEBHOOK_SAMPLES = [
   },
   {
     event: "ORDER_FAILED",
-    description: "Triggered when a payment attempt fails.",
+    category: "Order",
+    description: "Triggered when a payment attempt fails due to authentication, authorization, or other errors.",
     payload: {
       id: `evt_${Math.random().toString(36).substr(2, 9)}`,
       event_name: "ORDER_FAILED",
@@ -259,7 +363,129 @@ const WEBHOOK_SAMPLES = [
           amount: 1.00,
           currency: "INR",
           customer_id: "customer_123",
-          error_message: "User aborted the payment"
+          customer_email: "customer@example.com",
+          customer_phone: "9876543210",
+          payment_method: "CARD",
+          payment_method_type: "VISA",
+          error_message: "Authentication failed",
+          error_code: "AUTHENTICATION_FAILED",
+          date_created: new Date().toISOString()
+        }
+      },
+      created: new Date().toISOString()
+    }
+  },
+  {
+    event: "ORDER_REFUNDED",
+    category: "Order",
+    description: "Triggered when a partial or full refund is initiated against an order.",
+    payload: {
+      id: `evt_${Math.random().toString(36).substr(2, 9)}`,
+      event_name: "ORDER_REFUNDED",
+      content: {
+        order: {
+          order_id: "ORD_12345",
+          status: "REFUNDED",
+          amount: 1.00,
+          currency: "INR",
+          customer_id: "customer_123",
+          customer_email: "customer@example.com",
+          refunds: [
+            {
+              refund_id: "REF_12345",
+              status: "SUCCESS",
+              amount: 1.00,
+              reason: "Customer request",
+              error_message: null,
+              error_code: null,
+              date_created: new Date().toISOString()
+            }
+          ],
+          date_created: new Date().toISOString()
+        }
+      },
+      created: new Date().toISOString()
+    }
+  },
+  {
+    event: "ORDER_CREATED",
+    category: "Order",
+    description: "Triggered when a new order is created in the system.",
+    payload: {
+      id: `evt_${Math.random().toString(36).substr(2, 9)}`,
+      event_name: "ORDER_CREATED",
+      content: {
+        order: {
+          order_id: "ORD_12345",
+          status: "NEW",
+          amount: 1.00,
+          currency: "INR",
+          customer_id: "customer_123",
+          customer_email: "customer@example.com",
+          customer_phone: "9876543210",
+          product_id: "prod_123",
+          return_url: "https://merchant.com/return",
+          date_created: new Date().toISOString()
+        }
+      },
+      created: new Date().toISOString()
+    }
+  },
+  {
+    event: "ORDER_PENDING",
+    category: "Order",
+    description: "Triggered when an order moves to pending state awaiting customer action.",
+    payload: {
+      id: `evt_${Math.random().toString(36).substr(2, 9)}`,
+      event_name: "ORDER_PENDING",
+      content: {
+        order: {
+          order_id: "ORD_12345",
+          status: "PENDING",
+          amount: 1.00,
+          currency: "INR",
+          customer_id: "customer_123",
+          payment_method: "NB",
+          payment_method_type: "NET_BANKING",
+          txn_id: "TXN_123456789",
+          txn_uuid: "txn_uuid_abc123",
+          gateway_id: 1,
+          date_created: new Date().toISOString()
+        }
+      },
+      created: new Date().toISOString()
+    }
+  },
+  // Transaction-Level Webhooks
+  {
+    event: "TXN_CHARGED",
+    category: "Transaction",
+    description: "Triggered when a transaction is successfully charged.",
+    payload: {
+      id: `evt_${Math.random().toString(36).substr(2, 9)}`,
+      event_name: "TXN_CHARGED",
+      content: {
+        order: {
+          order_id: "ORD_12345",
+          status: "CHARGED",
+          amount: 1.00,
+          currency: "INR",
+          customer_id: "customer_123",
+          payment_method: "CARD",
+          payment_method_type: "VISA",
+          card: {
+            card_brand: "Visa",
+            card_type: "credit",
+            card_token: "tok_abc123",
+            card_reference: "ref_abc123",
+            last_four_digits: "4242",
+            name_on_card: "John Doe"
+          },
+          txn_id: "TXN_123456789",
+          txn_uuid: "txn_uuid_abc123",
+          gateway_id: 1,
+          gateway: "RAZORPAY",
+          date_created: new Date().toISOString()
         }
       },
       created: new Date().toISOString()
@@ -267,6 +493,7 @@ const WEBHOOK_SAMPLES = [
   },
   {
     event: "TXN_INITIATED",
+    category: "Transaction",
     description: "Triggered when a transaction is initiated by the customer.",
     payload: {
       id: `evt_${Math.random().toString(36).substr(2, 9)}`,
@@ -276,14 +503,126 @@ const WEBHOOK_SAMPLES = [
           order_id: "ORD_12345",
           status: "PENDING_VBV",
           amount: 1.00,
-          currency: "INR"
+          currency: "INR",
+          customer_id: "customer_123",
+          payment_method: "CARD",
+          payment_method_type: "VISA",
+          txn_id: "TXN_123456789",
+          txn_uuid: "txn_uuid_abc123",
+          gateway_id: 1,
+          date_created: new Date().toISOString()
         }
       },
       created: new Date().toISOString()
     }
   },
   {
+    event: "TXN_FAILED",
+    category: "Transaction",
+    description: "Triggered when a transaction fails at any stage.",
+    payload: {
+      id: `evt_${Math.random().toString(36).substr(2, 9)}`,
+      event_name: "TXN_FAILED",
+      content: {
+        order: {
+          order_id: "ORD_12345",
+          status: "FAILED",
+          amount: 1.00,
+          currency: "INR",
+          customer_id: "customer_123",
+          payment_method: "UPI",
+          payment_method_type: "UPI",
+          txn_id: "TXN_123456789",
+          txn_uuid: "txn_uuid_abc123",
+          error_message: "Transaction declined by bank",
+          error_code: "TRANSACTION_DECLINED",
+          date_created: new Date().toISOString()
+        }
+      },
+      created: new Date().toISOString()
+    }
+  },
+  {
+    event: "AUTHENTICATION_SUCCESSFUL",
+    category: "Transaction",
+    description: "Triggered when 3DS/OTP authentication is successful.",
+    payload: {
+      id: `evt_${Math.random().toString(36).substr(2, 9)}`,
+      event_name: "AUTHENTICATION_SUCCESSFUL",
+      content: {
+        order: {
+          order_id: "ORD_12345",
+          status: "AUTHENTICATION_SUCCESSFUL",
+          amount: 1.00,
+          currency: "INR",
+          customer_id: "customer_123",
+          payment_method: "CARD",
+          payment_method_type: "VISA",
+          txn_id: "TXN_123456789",
+          txn_uuid: "txn_uuid_abc123",
+          date_created: new Date().toISOString()
+        }
+      },
+      created: new Date().toISOString()
+    }
+  },
+  {
+    event: "AUTHENTICATION_FAILED",
+    category: "Transaction",
+    description: "Triggered when 3DS/OTP authentication fails.",
+    payload: {
+      id: `evt_${Math.random().toString(36).substr(2, 9)}`,
+      event_name: "AUTHENTICATION_FAILED",
+      content: {
+        order: {
+          order_id: "ORD_12345",
+          status: "AUTHENTICATION_FAILED",
+          amount: 1.00,
+          currency: "INR",
+          customer_id: "customer_123",
+          payment_method: "CARD",
+          payment_method_type: "VISA",
+          txn_id: "TXN_123456789",
+          txn_uuid: "txn_uuid_abc123",
+          error_message: "3D Secure authentication failed",
+          error_code: "AUTHENTICATION_FAILED",
+          date_created: new Date().toISOString()
+        }
+      },
+      created: new Date().toISOString()
+    }
+  },
+  {
+    event: "AUTHORIZATION_FAILED",
+    category: "Transaction",
+    description: "Triggered when authorization fails at the gateway.",
+    payload: {
+      id: `evt_${Math.random().toString(36).substr(2, 9)}`,
+      event_name: "AUTHORIZATION_FAILED",
+      content: {
+        order: {
+          order_id: "ORD_12345",
+          status: "AUTHORIZATION_FAILED",
+          amount: 1.00,
+          currency: "INR",
+          customer_id: "customer_123",
+          payment_method: "CARD",
+          payment_method_type: "VISA",
+          txn_id: "TXN_123456789",
+          txn_uuid: "txn_uuid_abc123",
+          error_message: "Insufficient funds",
+          error_code: "INSUFFICIENT_FUNDS",
+          gateway: "RAZORPAY",
+          date_created: new Date().toISOString()
+        }
+      },
+      created: new Date().toISOString()
+    }
+  },
+  // Refund Webhooks
+  {
     event: "REFUND_SUCCEEDED",
+    category: "Refund",
     description: "Triggered when a refund is successfully processed.",
     payload: {
       id: `evt_${Math.random().toString(36).substr(2, 9)}`,
@@ -293,7 +632,338 @@ const WEBHOOK_SAMPLES = [
           refund_id: "REF_12345",
           order_id: "ORD_12345",
           status: "SUCCESS",
-          amount: 1.00
+          amount: 1.00,
+          currency: "INR",
+          reason: "Customer request",
+          error_message: null,
+          error_code: null,
+          gateway_reference_id: "gateway_ref_123",
+          date_created: new Date().toISOString()
+        }
+      },
+      created: new Date().toISOString()
+    }
+  },
+  {
+    event: "REFUND_FAILED",
+    category: "Refund",
+    description: "Triggered when a refund fails to process.",
+    payload: {
+      id: `evt_${Math.random().toString(36).substr(2, 9)}`,
+      event_name: "REFUND_FAILED",
+      content: {
+        refund: {
+          refund_id: "REF_12345",
+          order_id: "ORD_12345",
+          status: "FAILED",
+          amount: 1.00,
+          currency: "INR",
+          reason: "Customer request",
+          error_message: "Refund window expired",
+          error_code: "REFUND_WINDOW_EXPIRED",
+          date_created: new Date().toISOString()
+        }
+      },
+      created: new Date().toISOString()
+    }
+  },
+  // Mandate Webhooks
+  {
+    event: "MANDATE_CREATED",
+    category: "Mandate",
+    description: "Triggered when a new mandate is created and sent to the customer's bank.",
+    payload: {
+      id: `evt_${Math.random().toString(36).substr(2, 9)}`,
+      event_name: "MANDATE_CREATED",
+      content: {
+        order: {
+          order_id: "ORD_12345",
+          status: "CHARGED",
+          customer_id: "customer_123"
+        },
+        mandate: {
+          mandate_id: "mandate_abc123",
+          mandate_status: "ACTIVE",
+          mandate_type: "EMANDATE",
+          max_amount: 10000.00,
+          currency: "INR",
+          start_date: "2024-01-01",
+          end_date: "2025-01-01",
+          frequency: "MONTHLY",
+          rule_value: 1,
+          rule_type: "ON",
+          revokable_by_customer: true,
+          date_created: new Date().toISOString()
+        }
+      },
+      created: new Date().toISOString()
+    }
+  },
+  {
+    event: "MANDATE_ACTIVATED",
+    category: "Mandate",
+    description: "Triggered when a mandate is activated by the customer's bank.",
+    payload: {
+      id: `evt_${Math.random().toString(36).substr(2, 9)}`,
+      event_name: "MANDATE_ACTIVATED",
+      content: {
+        order: {
+          order_id: "ORD_12345",
+          status: "CHARGED"
+        },
+        mandate: {
+          mandate_id: "mandate_abc123",
+          mandate_status: "ACTIVE",
+          mandate_type: "EMANDATE",
+          max_amount: 10000.00,
+          currency: "INR",
+          start_date: "2024-01-01",
+          end_date: "2025-01-01",
+          frequency: "MONTHLY",
+          bank_mandate_id: "BANK123456",
+          date_created: new Date().toISOString()
+        }
+      },
+      created: new Date().toISOString()
+    }
+  },
+  {
+    event: "MANDATE_REVOKED",
+    category: "Mandate",
+    description: "Triggered when a mandate is revoked by the merchant or customer.",
+    payload: {
+      id: `evt_${Math.random().toString(36).substr(2, 9)}`,
+      event_name: "MANDATE_REVOKED",
+      content: {
+        mandate: {
+          mandate_id: "mandate_abc123",
+          mandate_status: "REVOKED",
+          mandate_type: "EMANDATE",
+          max_amount: 10000.00,
+          currency: "INR",
+          revocation_reason: "Customer request",
+          date_created: new Date().toISOString()
+        }
+      },
+      created: new Date().toISOString()
+    }
+  },
+  {
+    event: "MANDATE_FAILED",
+    category: "Mandate",
+    description: "Triggered when mandate creation or activation fails.",
+    payload: {
+      id: `evt_${Math.random().toString(36).substr(2, 9)}`,
+      event_name: "MANDATE_FAILED",
+      content: {
+        order: {
+          order_id: "ORD_12345",
+          status: "FAILED"
+        },
+        mandate: {
+          mandate_id: "mandate_abc123",
+          mandate_status: "FAILED",
+          mandate_type: "EMANDATE",
+          error_message: "Bank rejected mandate registration",
+          error_code: "MANDATE_REGISTRATION_FAILED",
+          date_created: new Date().toISOString()
+        }
+      },
+      created: new Date().toISOString()
+    }
+  },
+  {
+    event: "MANDATE_EXECUTED",
+    category: "Mandate",
+    description: "Triggered when a recurring payment is successfully charged via mandate.",
+    payload: {
+      id: `evt_${Math.random().toString(36).substr(2, 9)}`,
+      event_name: "MANDATE_EXECUTED",
+      content: {
+        order: {
+          order_id: "ORD_RECURRING_001",
+          status: "CHARGED",
+          amount: 999.00,
+          currency: "INR",
+          customer_id: "customer_123",
+          payment_method: "UPI",
+          payment_method_type: "UPI",
+          txn_id: "TXN_MANDATE_001",
+          txn_uuid: "txn_uuid_mandate_001",
+          mandate_id: "mandate_abc123",
+          date_created: new Date().toISOString()
+        }
+      },
+      created: new Date().toISOString()
+    }
+  },
+  // Notification Webhooks
+  {
+    event: "NOTIFICATION_SENT",
+    category: "Notification",
+    description: "Triggered when a notification (SMS/Email/Push) is sent to the customer.",
+    payload: {
+      id: `evt_${Math.random().toString(36).substr(2, 9)}`,
+      event_name: "NOTIFICATION_SENT",
+      content: {
+        notification: {
+          notification_id: "notif_abc123",
+          order_id: "ORD_12345",
+          customer_id: "customer_123",
+          type: "EMAIL",
+          template_id: "payment_confirmation",
+          status: "SENT",
+          recipient: "customer@example.com",
+          subject: "Payment Successful",
+          content_preview: "Your payment of Rs. 1.00 was successful...",
+          date_created: new Date().toISOString()
+        }
+      },
+      created: new Date().toISOString()
+    }
+  },
+  {
+    event: "NOTIFICATION_DELIVERED",
+    category: "Notification",
+    description: "Triggered when a notification is confirmed delivered.",
+    payload: {
+      id: `evt_${Math.random().toString(36).substr(2, 9)}`,
+      event_name: "NOTIFICATION_DELIVERED",
+      content: {
+        notification: {
+          notification_id: "notif_abc123",
+          order_id: "ORD_12345",
+          customer_id: "customer_123",
+          type: "EMAIL",
+          template_id: "payment_confirmation",
+          status: "DELIVERED",
+          recipient: "customer@example.com",
+          delivered_at: new Date().toISOString(),
+          date_created: new Date().toISOString()
+        }
+      },
+      created: new Date().toISOString()
+    }
+  },
+  {
+    event: "NOTIFICATION_FAILED",
+    category: "Notification",
+    description: "Triggered when a notification fails to send or deliver.",
+    payload: {
+      id: `evt_${Math.random().toString(36).substr(2, 9)}`,
+      event_name: "NOTIFICATION_FAILED",
+      content: {
+        notification: {
+          notification_id: "notif_abc123",
+          order_id: "ORD_12345",
+          customer_id: "customer_123",
+          type: "SMS",
+          template_id: "otp",
+          status: "FAILED",
+          recipient: "9876543210",
+          error_message: "Invalid phone number",
+          error_code: "INVALID_RECIPIENT",
+          date_created: new Date().toISOString()
+        }
+      },
+      created: new Date().toISOString()
+    }
+  },
+  {
+    event: "NOTIFICATION_CLICKED",
+    category: "Notification",
+    description: "Triggered when a customer clicks on a notification link.",
+    payload: {
+      id: `evt_${Math.random().toString(36).substr(2, 9)}`,
+      event_name: "NOTIFICATION_CLICKED",
+      content: {
+        notification: {
+          notification_id: "notif_abc123",
+          order_id: "ORD_12345",
+          customer_id: "customer_123",
+          type: "EMAIL",
+          template_id: "payment_link",
+          link_clicked: "https://checkout.juspay.in/pay?orderId=ORD_12345",
+          clicked_at: new Date().toISOString(),
+          date_created: new Date().toISOString()
+        }
+      },
+      created: new Date().toISOString()
+    }
+  },
+  // Additional Refund Webhooks
+  {
+    event: "REFUND_INITIATED",
+    category: "Refund",
+    description: "Triggered when a refund request is received and validated.",
+    payload: {
+      id: `evt_${Math.random().toString(36).substr(2, 9)}`,
+      event_name: "REFUND_INITIATED",
+      content: {
+        refund: {
+          refund_id: "REF_12345",
+          order_id: "ORD_12345",
+          status: "INITIATED",
+          amount: 1.00,
+          currency: "INR",
+          unique_request_id: "ref_req_001",
+          reason: "Customer request",
+          initiator: "MERCHANT",
+          date_created: new Date().toISOString()
+        }
+      },
+      created: new Date().toISOString()
+    }
+  },
+  {
+    event: "REFUND_PENDING",
+    category: "Refund",
+    description: "Triggered when a refund is pending with the acquiring bank.",
+    payload: {
+      id: `evt_${Math.random().toString(36).substr(2, 9)}`,
+      event_name: "REFUND_PENDING",
+      content: {
+        refund: {
+          refund_id: "REF_12345",
+          order_id: "ORD_12345",
+          status: "PENDING",
+          amount: 1.00,
+          currency: "INR",
+          unique_request_id: "ref_req_001",
+          reason: "Customer request",
+          gateway: "RAZORPAY",
+          gateway_reference_id: "refund_gateway_ref_001",
+          date_created: new Date().toISOString()
+        }
+      },
+      created: new Date().toISOString()
+    }
+  },
+  {
+    event: "PARTIAL_REFUND_SUCCEEDED",
+    category: "Refund",
+    description: "Triggered when a partial refund is successfully processed.",
+    payload: {
+      id: `evt_${Math.random().toString(36).substr(2, 9)}`,
+      event_name: "PARTIAL_REFUND_SUCCEEDED",
+      content: {
+        refund: {
+          refund_id: "REF_12346",
+          order_id: "ORD_12345",
+          status: "SUCCESS",
+          amount: 0.50,
+          currency: "INR",
+          unique_request_id: "ref_req_002",
+          reason: "Partial cancellation",
+          gateway_reference_id: "refund_gateway_ref_002",
+          date_created: new Date().toISOString()
+        },
+        order: {
+          order_id: "ORD_12345",
+          total_amount: 1.00,
+          refunded_amount: 0.50,
+          remaining_amount: 0.50,
+          status: "PARTIALLY_REFUNDED"
         }
       },
       created: new Date().toISOString()
@@ -321,19 +991,38 @@ export function Playground({
   // Filter endpoints based on suggested integration
   const filteredEndpoints = (() => {
     if (!suggestedIntegration) return ENDPOINTS;
-    
+
     const lowerSuggestion = suggestedIntegration.toLowerCase();
-    
-    let targetTag: string = "Common";
+
+    // Collect all relevant tags based on suggestion
+    const targetTags: string[] = ["Common"];
+
     if (lowerSuggestion.includes("hypercheckout")) {
-      targetTag = "HyperCheckout";
-    } else if (lowerSuggestion.includes("express checkout") || lowerSuggestion.includes("ec sdk") || lowerSuggestion.includes("headless") || lowerSuggestion.includes("sdk")) {
-      targetTag = "EC SDK";
-    } else if (lowerSuggestion.includes("api") || lowerSuggestion.includes("web") || lowerSuggestion.includes("merchant-only")) {
-      targetTag = "EC API";
+      targetTags.push("HyperCheckout");
+    }
+    if (lowerSuggestion.includes("express checkout") || lowerSuggestion.includes("ec sdk") || lowerSuggestion.includes("headless") || lowerSuggestion.includes("sdk")) {
+      targetTags.push("EC SDK");
+    }
+    if (lowerSuggestion.includes("api") || lowerSuggestion.includes("web") || lowerSuggestion.includes("merchant-only")) {
+      targetTags.push("EC API");
+    }
+    if (lowerSuggestion.includes("surcharge")) {
+      targetTags.push("Surcharge");
+    }
+    if (lowerSuggestion.includes("offer")) {
+      targetTags.push("Offers");
+    }
+    if (lowerSuggestion.includes("payout")) {
+      targetTags.push("Payouts");
+    }
+    if (lowerSuggestion.includes("mandate")) {
+      targetTags.push("Mandates");
+    }
+    if (lowerSuggestion.includes("smartconvert") || lowerSuggestion.includes("convert")) {
+      targetTags.push("SmartConvert");
     }
 
-    return ENDPOINTS.filter(e => (e as any).tags?.includes(targetTag) || (e as any).tags?.includes("Common"));
+    return ENDPOINTS.filter(e => (e as any).tags?.some((tag: string) => targetTags.includes(tag)));
   })();
 
   const [selectedEndpoint, setSelectedEndpoint] = useState(filteredEndpoints[0] || ENDPOINTS[0]);
@@ -498,7 +1187,7 @@ export function Playground({
       if (res.ok) {
         toast.success("API Request Successful!");
 
-        // Auto-redirect to Live View Simulator if a web link is returned
+        // Auto-redirect to Live Web View if a web link is returned
         const webUrl = data.payment_links?.web || data.url || data.link;
         if (webUrl && (
           selectedEndpoint.name.toLowerCase().includes("session") || 
@@ -506,7 +1195,7 @@ export function Playground({
           selectedEndpoint.name.toLowerCase().includes("order") ||
           selectedEndpoint.name.toLowerCase().includes("txn")
         )) {
-          toast.info("Opening Live View Simulator", {
+          toast.info("Opening Live Web View", {
             description: "Opening the payment page in the simulator tab."
           });
           setLiveViewUrl(webUrl);
@@ -977,9 +1666,20 @@ export function Playground({
                         }`}
                       >
                         <div className="flex items-center justify-between mb-1">
-                          <span className={`font-bold text-sm ${webhookSample?.event_name === sample.event ? activeTheme.text : "text-zinc-800 dark:text-zinc-200"}`}>
-                            {sample.event}
-                          </span>
+                          <div className="flex items-center gap-2">
+                            <span className={`font-bold text-sm ${webhookSample?.event_name === sample.event ? activeTheme.text : "text-zinc-800 dark:text-zinc-200"}`}>
+                              {sample.event}
+                            </span>
+                            {(sample as any).category && (
+                              <span className={`text-[10px] px-1.5 py-0.5 rounded-full font-medium ${
+                                webhookSample?.event_name === sample.event
+                                  ? `${activeTheme.primary} text-white`
+                                  : "bg-zinc-100 dark:bg-zinc-800 text-zinc-600 dark:text-zinc-400"
+                              }`}>
+                                {(sample as any).category}
+                              </span>
+                            )}
+                          </div>
                           <ArrowRight className={`w-4 h-4 transition-transform group-hover:translate-x-1 ${webhookSample?.event_name === sample.event ? activeTheme.text : "text-zinc-300 dark:text-zinc-600"}`} />
                         </div>
                         <p className="text-xs text-zinc-500 dark:text-zinc-400 leading-relaxed line-clamp-2">

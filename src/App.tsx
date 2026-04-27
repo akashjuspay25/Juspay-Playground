@@ -153,7 +153,7 @@ export default function App() {
         initial={{ y: -100, opacity: 0 }}
         animate={{ y: 0, opacity: 1 }}
         transition={{ duration: 0.5, ease: [0.25, 0.46, 0.45, 0.94] }}
-        className="border-b border-zinc-200/50 dark:border-zinc-800/50 bg-white/80 dark:bg-zinc-950/80 backdrop-blur-xl px-6 py-4 flex items-center justify-between sticky top-0 z-50 shadow-sm transition-colors"
+        className="border-b border-zinc-200/50 dark:border-zinc-800/50 bg-white/80 dark:bg-zinc-950/80 backdrop-blur-xl px-3 sm:px-6 py-4 flex items-center justify-between sticky top-0 z-50 shadow-sm transition-colors"
       >
         <motion.div
           className="flex items-center gap-3 cursor-pointer group"
@@ -379,7 +379,7 @@ export default function App() {
           </div>
         </motion.div>
 
-        <div className="flex items-center gap-4 lg:gap-6">
+        <div className="flex items-center gap-2 sm:gap-4 lg:gap-6">
           {/* Navigation Menu */}
           <div className="relative">
             <motion.button
@@ -737,7 +737,7 @@ export default function App() {
             transition={{ delay: 0.3 }}
             className="hidden md:flex items-center gap-2 bg-zinc-100/50 dark:bg-zinc-900/50 p-1.5 rounded-full border border-zinc-200/50 dark:border-zinc-800/50"
           >
-            <div className="flex items-center gap-1.5 px-1">
+            <div className="flex items-center gap-1 sm:gap-1.5 px-1">
               {(Object.keys(APP_THEMES) as AppTheme[]).map((t, index) => (
                 <motion.button
                   key={t}
@@ -768,7 +768,7 @@ export default function App() {
                   animate={{ opacity: 1, scale: 1 }}
                   transition={{ delay: 0.1 * index }}
                   className={cn(
-                    "w-5 h-5 rounded-full transition-all duration-500 relative overflow-hidden shadow-inner border",
+                    "w-4 h-4 sm:w-5 sm:h-5 rounded-full transition-all duration-500 relative overflow-hidden shadow-inner border",
                     theme === t
                       ? "ring-2 ring-offset-2 ring-zinc-400 dark:ring-zinc-600 scale-110 shadow-md"
                       : "opacity-60 hover:opacity-100 border-transparent"
@@ -800,12 +800,13 @@ export default function App() {
             initial={{ opacity: 0, x: 20 }}
             animate={{ opacity: 1, x: 0 }}
             transition={{ delay: 0.4 }}
-            className="flex items-center gap-2 bg-zinc-100/50 dark:bg-zinc-900/50 px-3 py-1.5 rounded-full border border-zinc-200/50 dark:border-zinc-800/50 cursor-pointer"
+            className="flex items-center gap-1 sm:gap-2 bg-zinc-100/50 dark:bg-zinc-900/50 px-2 sm:px-3 py-1.5 rounded-full border border-zinc-200/50 dark:border-zinc-800/50 cursor-pointer shrink-0"
             onClick={(e) => toggleTheme(e)}
           >
             <motion.div
               animate={isDarkMode ? { scale: 0.8, opacity: 0.5 } : { scale: 1, opacity: 1 }}
               transition={{ duration: 0.2 }}
+              className="hidden sm:block"
             >
               <Sun className={cn("w-3.5 h-3.5", isDarkMode ? "text-zinc-500" : "text-amber-500")} />
             </motion.div>
@@ -813,11 +814,12 @@ export default function App() {
               id="dark-mode"
               checked={isDarkMode}
               onCheckedChange={() => {}}
-              className="data-[state=checked]:bg-indigo-600 pointer-events-none"
+              className="data-[state=checked]:bg-indigo-600 pointer-events-none scale-90 sm:scale-100"
             />
             <motion.div
               animate={isDarkMode ? { scale: 1, opacity: 1 } : { scale: 0.8, opacity: 0.5 }}
               transition={{ duration: 0.2 }}
+              className="hidden sm:block"
             >
               <Moon className={cn("w-3.5 h-3.5", isDarkMode ? "text-indigo-400" : "text-zinc-500")} />
             </motion.div>

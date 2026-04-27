@@ -89,6 +89,7 @@ export function AppIntegrator({ activeTheme }: AppIntegratorProps) {
   const [merchantOrderId, setMerchantOrderId] = useState<string>("");
   const [merchantSdkPayload, setMerchantSdkPayload] = useState<string>("");
   const [sdkControlsMinimized, setSdkControlsMinimized] = useState<boolean>(false);
+  const [logsMinimized, setLogsMinimized] = useState<boolean>(false);
   const logsEndRef = useRef<HTMLDivElement>(null);
 
   const addLog = (type: LogEntry['type'], message: string, details?: string) => {
@@ -1309,7 +1310,7 @@ For support: developer@juspay.io
         }
       }}
     >
-      <DialogContent className="w-auto min-w-[1000px] max-w-[95vw] h-[90vh] max-h-[850px] overflow-hidden p-0 flex flex-col">
+      <DialogContent className="w-full sm:w-auto sm:min-w-[1000px] max-w-[100vw] sm:max-w-[95vw] h-[100vh] sm:h-[90vh] max-h-none sm:max-h-[850px] overflow-hidden p-0 flex flex-col">
         {/* Header */}
         <div className="flex-none px-6 py-4 border-b border-zinc-200 dark:border-zinc-800 bg-white dark:bg-zinc-950">
           <DialogHeader>
@@ -1371,17 +1372,17 @@ For support: developer@juspay.io
           </div>
         </div>
 
-        {/* Main Content - Flex Row Layout */}
-        <div className="flex-1 flex flex-row min-h-0">
-          {/* Phone Mockup / Real Payment Page - Left Side */}
-          <div className="w-[50%] flex items-center justify-center bg-gradient-to-br from-zinc-50 to-zinc-100 dark:from-zinc-900 dark:to-zinc-950 p-4 overflow-auto">
+        {/* Main Content - Flex Col on Mobile, Row on Desktop */}
+        <div className="flex-1 flex flex-col sm:flex-row min-h-0 overflow-hidden">
+          {/* Phone Mockup / Real Payment Page - Full width on mobile, Left Side on desktop */}
+          <div className="w-full sm:w-[45%] h-[45vh] sm:h-auto flex items-center justify-center bg-gradient-to-br from-zinc-50 to-zinc-100 dark:from-zinc-900 dark:to-zinc-950 p-2 sm:p-4 overflow-hidden">
             {previewMode === 'real' && paymentPageUrl ? (
               /* Real Juspay Payment Page in iframe */
               <div
                 className="relative bg-zinc-900 rounded-[1.25rem] border-[4px] border-zinc-800 shadow-2xl overflow-hidden"
                 style={{
-                  width: '180px',
-                  height: '350px',
+                  width: 'clamp(160px, 40vw, 200px)',
+                  height: 'clamp(320px, 80vh, 400px)',
                   flexShrink: 0,
                 }}
               >
@@ -1418,8 +1419,8 @@ For support: developer@juspay.io
                 )}
               </div>
             ) : (
-              /* Android Phone with Real SDK Simulation - Scaled down 44% */
-              <div style={{ transform: 'scale(0.56)', transformOrigin: 'center center' }}>
+              /* Android Phone with Real SDK Simulation - Responsive scaling */
+              <div style={{ transform: 'scale(clamp(0.4, 0.5, 0.6))', transformOrigin: 'center center' }}>
                 <AndroidPhonePreview
                   merchantId={config.merchantId}
                   clientId={config.clientId}
@@ -1440,30 +1441,52 @@ For support: developer@juspay.io
             )}
           </div>
 
-          {/* Logs Panel - Right Side - 50% width */}
-          <div className="w-[50%] bg-white dark:bg-zinc-950 border-l border-zinc-200 dark:border-zinc-800 flex flex-col">
-            <CardHeader className="border-b border-zinc-100 dark:border-zinc-800 flex-none py-4 px-6 bg-zinc-50/50 dark:bg-zinc-900/50">
+          {/* Logs Panel - Full width on mobile, Right Side on desktop */}
+          <div className={cn(
+            "w-full sm:w-[55%] bg-white dark:bg-zinc-950 border-t sm:border-t-0 sm:border-l border-zinc-200 dark:border-zinc-800 flex flex-col transition-all duration-300",
+            logsMinimized ? "h-auto sm:h-auto" : "h-[55vh] sm:h-auto"
+          )}>
+            <CardHeader className="border-b border-zinc-100 dark:border-zinc-800 flex-none py-3 px-4 sm:py-4 sm:px-6 bg-zinc-50/50 dark:bg-zinc-900/50">
               <div className="flex items-center justify-between">
-                <div>
-                  <CardTitle className="text-base flex items-center gap-2">
-                    <Terminal className="w-5 h-5 text-zinc-500" />
+                <div className="flex items-center gap-2">
+                  <CardTitle className="text-sm sm:text-base flex items-center gap-2">
+                    <Terminal className="w-4 h-4 sm:w-5 sm:h-5 text-zinc-500" />
                     SDK Integration Logs
+                    {logs.length > 0 && (
+                      <Badge variant="secondary" className="text-[10px] h-5">
+                        {logs.length}
+                      </Badge>
+                    )}
                   </CardTitle>
-                  <CardDescription className="text-xs">Real-time HyperCheckout SDK lifecycle events</CardDescription>
+                  {!logsMinimized && (
+                    <CardDescription className="text-xs hidden sm:block">Real-time HyperCheckout SDK lifecycle events</CardDescription>
+                  )}
                 </div>
-                <Button
-                  variant="ghost"
-                  size="sm"
-                  onClick={() => {
-                    setLogs([]);
-                    setSdkStatus("idle");
-                  }}
-                  className="text-xs"
-                >
-                  Clear
-                </Button>
+                <div className="flex items-center gap-1">
+                  <Button
+                    variant="ghost"
+                    size="sm"
+                    onClick={() => setLogsMinimized(!logsMinimized)}
+                    className="text-xs h-8 w-8 p-0"
+                    title={logsMinimized ? "Expand logs" : "Minimize logs"}
+                  >
+                    {logsMinimized ? <ChevronUp className="w-4 h-4" /> : <ChevronDown className="w-4 h-4" />}
+                  </Button>
+                  <Button
+                    variant="ghost"
+                    size="sm"
+                    onClick={() => {
+                      setLogs([]);
+                      setSdkStatus("idle");
+                    }}
+                    className="text-xs"
+                  >
+                    Clear
+                  </Button>
+                </div>
               </div>
             </CardHeader>
+            {!logsMinimized && (
             <CardContent className="flex-1 flex flex-col p-0 min-h-0">
               {/* Scrollable Logs Area */}
               <div className="flex-1 bg-slate-950 p-4 font-mono text-xs space-y-2 overflow-y-auto min-h-0">
@@ -1510,8 +1533,19 @@ For support: developer@juspay.io
                 )}
                 <div ref={logsEndRef} />
               </div>
+            </CardContent>
+            )}
 
-              {/* SDK Control Footer - Functional */}
+            {/* Minimized state indicator */}
+            {logsMinimized && (
+              <div className="p-3 bg-zinc-50/50 dark:bg-zinc-900/50 text-center">
+                <p className="text-xs text-zinc-500">
+                  {logs.length > 0 ? `${logs.length} log entries hidden` : "No logs yet"}
+                </p>
+              </div>
+            )}
+
+            {/* SDK Control Footer - Functional */}
               <div className={cn(
                 "flex-none border-t border-zinc-200 dark:border-zinc-800 bg-zinc-50/50 dark:bg-zinc-900/50 transition-all",
                 sdkControlsMinimized ? "p-2" : "p-4"
@@ -1603,7 +1637,6 @@ For support: developer@juspay.io
                 </div>
                 </>)}
               </div>
-            </CardContent>
           </div>
         </div>
       </DialogContent>
