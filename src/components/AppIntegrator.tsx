@@ -568,9 +568,16 @@ dependencies {`
       );
     }
 
-    // Add hyperSdkPlugin block if not present
-    if (!gradle.includes("hyperSdkPlugin")) {
-      const clientIdValue = config.clientId || config.merchantId || "";
+    // Add or update hyperSdkPlugin block
+    const clientIdValue = config.clientId || config.merchantId || "";
+    if (gradle.includes("hyperSdkPlugin")) {
+      // Update existing clientId - handle multiline block
+      gradle = gradle.replace(
+        /(hyperSdkPlugin\s*\{[\s\S]*?clientId\s*=\s*)"[^"]*"/,
+        `$1"${clientIdValue}"`
+      );
+    } else {
+      // Add new block at the end
       gradle += `
 
 // Juspay HyperCheckout Plugin Configuration

@@ -18,7 +18,7 @@ import { cn } from "@/lib/utils";
 import { Switch } from "@/components/ui/switch";
 import { SuggestionResponse, ChatMessage } from "@/src/lib/claude";
 
-export type AppTheme = "noir" | "aurora" | "steel" | "sunset" | "midnight";
+export type AppTheme = "noir" | "aurora" | "ocean" | "sunset" | "midnight";
 
 export interface ThemeColors {
   primary: string;
@@ -32,9 +32,9 @@ export interface ThemeColors {
 }
 
 export const APP_THEMES: Record<AppTheme, ThemeColors> = {
+  ocean: { primary: "bg-[#1b85ff]", secondary: "bg-blue-100", text: "text-[#1b85ff]", border: "border-blue-200", ring: "focus-visible:ring-[#1b85ff]", bg: "bg-blue-50 dark:bg-blue-950/20", pageBg: "bg-zinc-100 dark:bg-zinc-950", accent: "blue" },
   noir: { primary: "bg-red-600", secondary: "bg-zinc-200", text: "text-red-600", border: "border-red-200", ring: "focus-visible:ring-red-600", bg: "bg-red-50 dark:bg-red-950/20", pageBg: "bg-zinc-100 dark:bg-zinc-950", accent: "red" },
   aurora: { primary: "bg-emerald-600", secondary: "bg-zinc-200", text: "text-emerald-600", border: "border-emerald-200", ring: "focus-visible:ring-emerald-600", bg: "bg-emerald-50 dark:bg-emerald-950/20", pageBg: "bg-zinc-100 dark:bg-zinc-950", accent: "emerald" },
-  steel: { primary: "bg-zinc-600", secondary: "bg-zinc-200", text: "text-zinc-600", border: "border-zinc-300", ring: "focus-visible:ring-zinc-600", bg: "bg-zinc-100 dark:bg-zinc-800/20", pageBg: "bg-zinc-100 dark:bg-zinc-950", accent: "zinc" },
   sunset: { primary: "bg-orange-600", secondary: "bg-zinc-200", text: "text-orange-600", border: "border-orange-200", ring: "focus-visible:ring-orange-600", bg: "bg-orange-50 dark:bg-orange-950/20", pageBg: "bg-zinc-100 dark:bg-zinc-950", accent: "orange" },
   midnight: { primary: "bg-indigo-600", secondary: "bg-zinc-200", text: "text-indigo-600", border: "border-indigo-200", ring: "focus-visible:ring-indigo-600", bg: "bg-indigo-50 dark:bg-indigo-950/20", pageBg: "bg-zinc-100 dark:bg-zinc-950", accent: "indigo" },
 };
@@ -43,7 +43,7 @@ export default function App() {
   const [view, setView] = useState<"landing" | "playground" | "app-integrator" | "debugger">("landing");
   const [menuOpen, setMenuOpen] = useState(false);
   const [activeTab, setActiveTab] = useState("consultant");
-  const [theme, setTheme] = useState<AppTheme>("noir");
+  const [theme, setTheme] = useState<AppTheme>("ocean");
   const [isDarkMode, setIsDarkMode] = useState(false);
 
   // Apply theme CSS variables for smooth transitions
