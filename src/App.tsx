@@ -252,7 +252,7 @@ export default function App() {
                 />
               </span>
 
-              {/* Boy Coding Animation */}
+              {/* Laptop Coding Animation */}
               <motion.div
                 className="flex items-center ml-2"
                 initial={{ opacity: 0, scale: 0.8 }}
@@ -260,111 +260,101 @@ export default function App() {
                 transition={{ delay: 0.6, type: "spring", stiffness: 200 }}
               >
                 <motion.svg
-                  viewBox="0 0 60 40"
+                  viewBox="0 0 50 40"
                   className="w-10 h-8"
                   whileHover={{ scale: 1.1 }}
                 >
-                  {/* Ground */}
-                  <rect x="0" y="35" width="40" height="2" rx="1" className="fill-zinc-400" />
+                  {/* Desk */}
+                  <rect x="5" y="32" width="40" height="3" rx="1" className="fill-zinc-400 dark:fill-zinc-600" />
 
-                  {/* Boy Head */}
-                  <circle cx="15" cy="12" r="5" className="fill-zinc-700 dark:fill-zinc-600" />
-
-                  {/* Hair */}
+                  {/* Laptop Base */}
                   <path
-                    d="M10 11c0-3 2.5-5 5-5s5 2 5 5"
-                    className="fill-zinc-800 dark:fill-zinc-500"
-                  />
-
-                  {/* Eyes */}
-                  <circle cx="13" cy="12" r="0.8" className="fill-zinc-950" />
-                  <circle cx="17" cy="12" r="0.8" className="fill-zinc-950" />
-
-                  {/* Smile */}
-                  <path
-                    d="M13 14.5c0.5 0.5 1.5 0.5 2 0"
-                    stroke="currentColor"
-                    className="stroke-zinc-950"
-                    strokeWidth="0.5"
-                    strokeLinecap="round"
-                    fill="none"
-                  />
-
-                  {/* Body */}
-                  <path
-                    d="M10 18c0-2 2-4 5-4s5 2 5 4v10h-10z"
+                    d="M15 29 L35 29 L38 32 L12 32 Z"
                     className="fill-zinc-600 dark:fill-zinc-500"
                   />
 
-                  {/* Left Arm - Balancing */}
+                  {/* Laptop Screen Frame */}
+                  <rect x="16" y="15" width="18" height="14" rx="1.5" className="fill-zinc-700 dark:fill-zinc-800" />
+
+                  {/* Laptop Screen Display */}
+                  <rect x="17" y="16" width="16" height="12" rx="1" className="fill-zinc-900" />
+
+                  {/* Animated Code Lines on Screen */}
+                  <motion.rect
+                    x="18" y="17.5" width="5" height="1" rx="0.3"
+                    className={activeTheme.primary}
+                    animate={{ opacity: [1, 0.4, 1], width: [5, 10, 5] }}
+                    transition={{ duration: 1.2, repeat: Infinity, delay: 0 }}
+                  />
+                  <motion.rect
+                    x="18" y="19.5" width="8" height="1" rx="0.3"
+                    className="fill-emerald-500"
+                    animate={{ opacity: [1, 0.4, 1], width: [8, 4, 8] }}
+                    transition={{ duration: 1.2, repeat: Infinity, delay: 0.2 }}
+                  />
+                  <motion.rect
+                    x="18" y="21.5" width="4" height="1" rx="0.3"
+                    className="fill-blue-500"
+                    animate={{ opacity: [1, 0.4, 1], width: [4, 7, 4] }}
+                    transition={{ duration: 1.2, repeat: Infinity, delay: 0.4 }}
+                  />
+                  <motion.rect
+                    x="18" y="23.5" width="6" height="1" rx="0.3"
+                    className="fill-amber-500"
+                    animate={{ opacity: [1, 0.4, 1], width: [6, 3, 6] }}
+                    transition={{ duration: 1.2, repeat: Infinity, delay: 0.6 }}
+                  />
+
+                  {/* Blinking Cursor */}
+                  <motion.rect
+                    x="18"
+                    y="25.5"
+                    width="1"
+                    height="1"
+                    className="fill-zinc-400"
+                    animate={{ opacity: [1, 0, 1] }}
+                    transition={{ duration: 0.8, repeat: Infinity }}
+                  />
+
+                  {/* Coffee Cup */}
+                  <rect x="40" y="27" width="4" height="5" rx="0.5" className="fill-zinc-600 dark:fill-zinc-500" />
                   <path
-                    d="M10 20 L5 16"
+                    d="M44 29 Q46 29 46 31 Q46 33 44 33"
                     className="stroke-zinc-600 dark:stroke-zinc-500"
-                    strokeWidth="2"
-                    strokeLinecap="round"
+                    strokeWidth="0.8"
                     fill="none"
                   />
 
-                  {/* Right Arm - Raised for kick */}
+                  {/* Steam Animation */}
                   <motion.path
-                    d="M20 20 L25 14"
-                    className="stroke-zinc-600 dark:stroke-zinc-500"
-                    strokeWidth="2"
+                    d="M41 26 Q42 24 41 22"
+                    className="stroke-zinc-400 dark:stroke-zinc-500"
+                    strokeWidth="0.5"
                     strokeLinecap="round"
                     fill="none"
-                    animate={{ d: ["M20 20 L25 14", "M20 20 L26 12", "M20 20 L25 14"] }}
-                    transition={{ duration: 0.5, repeat: Infinity, repeatDelay: 1.5 }}
+                    animate={{ opacity: [0.3, 0.8, 0.3], y: [0, -2, 0] }}
+                    transition={{ duration: 2, repeat: Infinity }}
                   />
-
-                  {/* Left Leg - Standing */}
-                  <path
-                    d="M12 28 L12 35"
-                    className="stroke-zinc-600 dark:stroke-zinc-500"
-                    strokeWidth="2.5"
-                    strokeLinecap="round"
-                    fill="none"
-                  />
-
-                  {/* Right Leg - Kicking */}
                   <motion.path
-                    d="M18 28 L22 32 L28 30"
-                    className="stroke-zinc-600 dark:stroke-zinc-500"
-                    strokeWidth="2.5"
+                    d="M43 26 Q44 24 43 22"
+                    className="stroke-zinc-400 dark:stroke-zinc-500"
+                    strokeWidth="0.5"
                     strokeLinecap="round"
                     fill="none"
-                    animate={{ d: ["M18 28 L22 32 L28 30", "M18 28 L24 30 L32 28", "M18 28 L22 32 L28 30"] }}
-                    transition={{ duration: 0.3, repeat: Infinity, repeatDelay: 1.7 }}
+                    animate={{ opacity: [0.3, 0.8, 0.3], y: [0, -2, 0] }}
+                    transition={{ duration: 2, repeat: Infinity, delay: 0.5 }}
                   />
 
-                  {/* Football */}
-                  <motion.circle
-                    cx="30"
-                    cy="33"
-                    r="3"
-                    className="fill-zinc-800 dark:fill-zinc-300"
-                    animate={{
-                      cx: [30, 45, 55, 30],
-                      cy: [33, 25, 30, 33],
-                      scale: [1, 0.9, 0.8, 1]
-                    }}
-                    transition={{ duration: 2, repeat: Infinity, repeatDelay: 0.5, ease: "easeOut" }}
-                  />
-
-                  {/* Motion trail */}
-                  <motion.circle
-                    cx="35"
-                    cy="30"
-                    r="1"
+                  {/* Floating Code Symbol */}
+                  <motion.text
+                    x="42"
+                    y="12"
+                    fontSize="5"
                     className={activeTheme.text}
                     fill="currentColor"
-                    opacity="0"
-                    animate={{
-                      cx: [35, 50, 58],
-                      cy: [30, 22, 28],
-                      opacity: [0, 0.6, 0]
-                    }}
-                    transition={{ duration: 2, repeat: Infinity, repeatDelay: 0.5, delay: 0.1 }}
-                  />
+                    animate={{ y: [12, 9, 12], opacity: [0.3, 0.7, 0.3] }}
+                    transition={{ duration: 2.5, repeat: Infinity }}
+                  >{`</>`}</motion.text>
                 </motion.svg>
               </motion.div>
             </motion.h1>
